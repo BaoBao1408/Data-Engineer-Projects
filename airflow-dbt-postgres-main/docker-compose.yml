@@ -1,0 +1,78 @@
+version: "3"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.8.1-python3.9
+  env_file: ./airflow/.env
+  environment:
+    AIRFLOW__CORE__LOAD_EXAMPLES: ${_AIRFLOW__CORE__LOAD_EXAMPLES:-False}
+    AIRFLOW__CORE__EXECUTOR: ${_AIRFLOW__CORE__EXECUTOR:-LocalExecutor}
+    AIRFLOW__CORE_TEST_CONNECTION: ${_AIRFLOW__CORE_TEST_CONNECTION:-Enabled}
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: ${_AIRFLOW__DATABASE__SQL_ALCHEMY_CONN:-postgresql+psycopg2://airflow:airflow@postgres-airflow:5432/airflow}
+    AIRFLOW__WEBSERVER_BASE_URL: ${_AIRFLOW__WEBSERVER_BASE_URL:-http://localhost:8080}
+    AIRFLOW__WEBSERVER__SECRET_KEY: ${_AIRFLOW__WEBSERVER__SECRET_KEY:-_k2FmuZFxuyaIaPYUfSEp4Z3cs0V0kfcpLq9Iimkr3k}
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/output:/opt/airflow/output
+    - ./data:/opt/airflow/data
+    - ./dbt:/opt/dbt
+    - ./dbt/profiles.yml:/home/airflow/.dbt/profiles.yml
+  depends_on:
+    - postgres-airflow
+  networks:
+    - pipeline-network
+
+services:
+  postgres-airflow:
+    image: postgres:14.0
+    container_name: postgres-airflow
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    networks:
+      - pipeline-network
+
+  postgres-dwh:
+    image: postgres:14.0
+    container_name: postgres-dwh
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin
+      POSTGRES_DB: data_warehouse
+    volumes:
+      - ./postgresql/initdb.sql:/docker-entrypoint-initdb.d/initdb.sql
+      - ./data/initial:/docker-entrypoint-initdb.d/data
+    networks:
+      - pipeline-network
+
+  pgadmin:
+    container_name: pgadmin
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    depends_on:
+      - postgres-dwh
+    networks:
+      - pipeline-network
+    ports:
+      - "5050:80"
+
+  webserver:
+    <<: *airflow-common
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      - scheduler
+    restart: unless-stopped
+
+  scheduler:
+    <<: *airflow-common
+    command: bash -c "airflow db migrate && airflow users create --username admin --firstname Maulana --lastname 'Ahmad Maliki' --role Admin --email maulanamaliki2007@gmail.com --password admin && airflow scheduler"
+
+networks:
+  pipeline-network:

@@ -1,0 +1,14 @@
+name: 'data_pipeline_project'
+version: '1.0.0'
+config-version: 2
+
+profile: 'default'
+target-path: 'target'
+clean-targets: ['target', 'dbt_modules']
+
+models:
+  data_pipeline_project:
+    staging:
+      +materialized: table
+    warehouse:
+      +materialized: table

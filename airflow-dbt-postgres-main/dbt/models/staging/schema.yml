@@ -1,0 +1,107 @@
+version: 2
+
+sources:
+  - name: staging
+    database: data_warehouse
+    schema: public
+    tables:
+      - name: categories
+        columns:
+          - name: id
+            tests:
+              - not_null
+              - unique
+          - name: name
+            tests:
+              - not_null
+          - name: created_at
+            tests:
+              - not_null
+          - name: updated_at
+            tests:
+              - not_null
+
+      - name: goods
+        columns:
+          - name: id
+            tests:
+              - not_null
+              - unique
+          - name: category_id
+            tests:
+              - not_null
+          - name: name
+            tests:
+              - not_null
+          - name: price
+            tests:
+              - not_null
+          - name: created_at
+            tests:
+              - not_null
+          - name: updated_at
+            tests:
+              - not_null
+
+      - name: order_item
+        columns:
+          - name: id
+            tests:
+              - not_null
+              - unique
+          - name: order_id
+            tests:
+              - not_null
+          - name: goods_id
+            tests:
+              - not_null
+          - name: qty
+            tests:
+              - not_null
+          - name: created_at
+            tests:
+              - not_null
+          - name: updated_at
+            tests:
+              - not_null
+
+      - name: orders
+        columns:
+          - name: id
+            tests:
+              - not_null
+              - unique
+          - name: user_id
+            tests:
+              - not_null
+          - name: is_refund
+            tests:
+              - not_null
+          - name: created_at
+            tests:
+              - not_null
+          - name: updated_at
+            tests:
+              - not_null
+
+      - name: users
+        columns:
+          - name: id
+            tests:
+              - not_null
+              - unique
+          - name: name
+            tests:
+              - not_null
+          - name: email
+            tests:
+              - not_null
+          - name: phone
+            tests:
+              - not_null
+          - name: created_at
+            tests:
+              - not_null
+          - name: updated_at
+            tests:
+              - not_null

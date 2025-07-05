@@ -1,0 +1,6 @@
+version: 2
+
+models:
+  - name: dim_goods
+  - name: dim_users
+  - name: fact_transactions

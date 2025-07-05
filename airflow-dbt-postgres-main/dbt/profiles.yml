@@ -1,0 +1,11 @@
+default:
+  outputs:
+    dev:
+      type: postgres
+      host: postgres-dwh
+      user: admin
+      password: admin
+      port: 5432
+      dbname: data_warehouse
+      schema: public
+  target: dev
