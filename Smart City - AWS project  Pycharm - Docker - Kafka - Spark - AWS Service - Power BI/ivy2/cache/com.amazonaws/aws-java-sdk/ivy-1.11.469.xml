@@ -1,0 +1,222 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ivy-module version="2.0" xmlns:m="http://ant.apache.org/ivy/maven">
+	<info organisation="com.amazonaws"
+		module="aws-java-sdk"
+		revision="1.11.469"
+		status="release"
+		publication="20181214012538"
+	>
+		<license name="Apache License, Version 2.0" url="https://aws.amazon.com/apache2.0" />
+		<description homepage="https://aws.amazon.com/sdkforjava">
+		The Amazon Web Services SDK for Java provides Java APIs for building software on AWS&apos; cost-effective, scalable, and reliable infrastructure products. The AWS Java SDK allows developers to code against APIs for all of Amazon&apos;s infrastructure web services (Amazon S3, Amazon EC2, Amazon SQS, Amazon Relational Database Service, Amazon AutoScaling, etc).
+		</description>
+		<m:properties__commons.logging.version>1.1.3</m:properties__commons.logging.version>
+		<m:properties__wiremock.version>1.55</m:properties__wiremock.version>
+		<m:properties__netty.version>4.1.17.Final</m:properties__netty.version>
+		<m:properties__ion.java.version>1.0.2</m:properties__ion.java.version>
+		<m:properties__jackson.version>2.6.7</m:properties__jackson.version>
+		<m:properties__easymock.version>3.2</m:properties__easymock.version>
+		<m:properties__httpcomponents.httpclient.version>4.5.5</m:properties__httpcomponents.httpclient.version>
+		<m:properties__unitils.version>3.3</m:properties__unitils.version>
+		<m:properties__equalsverifier.version>1.7.5</m:properties__equalsverifier.version>
+		<m:properties__jre.version>1.6</m:properties__jre.version>
+		<m:properties__freemarker.version>2.3.9</m:properties__freemarker.version>
+		<m:properties__project.build.sourceEncoding>UTF-8</m:properties__project.build.sourceEncoding>
+		<m:properties__log4j.version>1.2.17</m:properties__log4j.version>
+		<m:properties__junit.version>4.12</m:properties__junit.version>
+		<m:properties__aspectj.version>1.8.2</m:properties__aspectj.version>
+		<m:properties__maven-failsafe-plugin.version>2.19.1</m:properties__maven-failsafe-plugin.version>
+		<m:properties__javax.mail.version>1.4.6</m:properties__javax.mail.version>
+		<m:properties__cucumber.guice.version>4.0</m:properties__cucumber.guice.version>
+		<m:properties__awsjavasdk.version>${project.version}</m:properties__awsjavasdk.version>
+		<m:properties__spring.version>3.0.7.RELEASE</m:properties__spring.version>
+		<m:properties__jackson.databind.version>2.6.7.2</m:properties__jackson.databind.version>
+		<m:properties__mockito.all.version>1.10.19</m:properties__mockito.all.version>
+		<m:properties__jodatime.version>2.8.1</m:properties__jodatime.version>
+		<m:properties__cucumber.info.cukes.version>1.2.4</m:properties__cucumber.info.cukes.version>
+		<m:properties__commons.io.version>2.4</m:properties__commons.io.version>
+		<m:properties__hamcrest.all.version>1.3</m:properties__hamcrest.all.version>
+		<m:properties__additionalparam>-Xdoclint:none</m:properties__additionalparam>
+		<m:dependency.management__com.amazonaws__jmespath-java__version>1.11.469</m:dependency.management__com.amazonaws__jmespath-java__version>
+		<m:maven.plugins>org.apache.maven.plugins__maven-compiler-plugin__null|org.apache.maven.plugins__maven-javadoc-plugin__null</m:maven.plugins>
+	</info>
+	<configurations>
+		<conf name="default" visibility="public" description="runtime dependencies and master artifact can be used with this conf" extends="runtime,master"/>
+		<conf name="master" visibility="public" description="contains only the artifact published by this module itself, with no transitive dependencies"/>
+		<conf name="compile" visibility="public" description="this is the default scope, used if none is specified. Compile dependencies are available in all classpaths."/>
+		<conf name="provided" visibility="public" description="this is much like compile, but indicates you expect the JDK or a container to provide it. It is only available on the compilation classpath, and is not transitive."/>
+		<conf name="runtime" visibility="public" description="this scope indicates that the dependency is not required for compilation, but is for execution. It is in the runtime and test classpaths, but not the compile classpath." extends="compile"/>
+		<conf name="test" visibility="public" description="this scope indicates that the dependency is not required for normal use of the application, and is only available for the test compilation and execution phases." extends="runtime"/>
+		<conf name="system" visibility="public" description="this scope is similar to provided except that you have to provide the JAR which contains it explicitly. The artifact is always available and is not looked up in a repository."/>
+		<conf name="sources" visibility="public" description="this configuration contains the source artifact of this module, if any."/>
+		<conf name="javadoc" visibility="public" description="this configuration contains the javadoc artifact of this module, if any."/>
+		<conf name="optional" visibility="public" description="contains all optional dependencies"/>
+	</configurations>
+	<publications>
+		<artifact name="aws-java-sdk" type="jar" ext="jar" conf="master"/>
+	</publications>
+	<dependencies>
+		<dependency org="com.amazonaws" name="aws-java-sdk-kafka" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-appmesh" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-licensemanager" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-securityhub" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-fsx" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-mediaconnect" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-kinesisanalyticsv2" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-comprehendmedical" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-globalaccelerator" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-transfer" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-datasync" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-robomaker" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-amplify" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-quicksight" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-rdsdata" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-route53resolver" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-ram" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-s3control" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-pinpointsmsvoice" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-pinpointemail" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-chime" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-signer" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-dlm" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-macie" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-eks" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-mediatailor" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-neptune" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-pi" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-iot1clickprojects" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-iot1clickdevices" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-iotanalytics" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-acmpca" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-secretsmanager" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-fms" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-connect" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-transcribe" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-autoscalingplans" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-workmail" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-servicediscovery" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cloud9" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-serverlessapplicationrepository" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-alexaforbusiness" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-resourcegroups" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-comprehend" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-translate" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-sagemaker" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-iotjobsdataplane" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-sagemakerruntime" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-kinesisvideo" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-appsync" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-guardduty" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-mq" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-mediaconvert" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-mediastore" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-mediastoredata" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-medialive" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-mediapackage" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-costexplorer" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-pricing" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-mobile" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cloudhsmv2" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-glue" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-migrationhub" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-dax" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-greengrass" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-athena" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-marketplaceentitlement" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-codestar" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-lexmodelbuilding" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-resourcegroupstaggingapi" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-pinpoint" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-xray" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-opsworkscm" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-support" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-simpledb" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-servicecatalog" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-servermigration" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-simpleworkflow" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-storagegateway" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-route53" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-s3" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-importexport" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-sts" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-sqs" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-rds" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-redshift" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-elasticbeanstalk" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-glacier" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-iam" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-datapipeline" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-elasticloadbalancing" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-elasticloadbalancingv2" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-emr" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-elasticache" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-elastictranscoder" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-ec2" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-dynamodb" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-sns" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-budgets" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cloudtrail" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cloudwatch" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-logs" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-events" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cognitoidentity" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cognitosync" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-directconnect" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cloudformation" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cloudfront" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-clouddirectory" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-kinesis" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-opsworks" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-ses" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-autoscaling" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cloudsearch" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cloudwatchmetrics" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-codedeploy" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-codepipeline" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-kms" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-config" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-lambda" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-ecs" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-ecr" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cloudhsm" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-ssm" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-workspaces" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-machinelearning" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-directory" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-efs" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-codecommit" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-devicefarm" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-elasticsearch" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-waf" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-marketplacecommerceanalytics" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-inspector" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-iot" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-api-gateway" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-acm" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-gamelift" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-dms" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-marketplacemeteringservice" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-cognitoidp" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-discovery" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-applicationautoscaling" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-snowball" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-rekognition" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-polly" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-lightsail" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-stepfunctions" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-health" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-costandusagereport" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-codebuild" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-appstream" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-shield" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-batch" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-lex" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-mechanicalturkrequester" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-organizations" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-workdocs" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-core" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-models" rev="1.11.469" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<dependency org="com.amazonaws" name="aws-java-sdk-swf-libraries" rev="1.11.22" force="true" conf="compile->compile(*),master(*);runtime->runtime(*)"/>
+		<override org="com.amazonaws" module="jmespath-java" matcher="exact" rev="1.11.469"/>
+	</dependencies>
+</ivy-module>

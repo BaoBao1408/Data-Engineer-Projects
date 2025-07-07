@@ -1,0 +1,16 @@
+# Ignore JAR files
+**/*.jar
+
+# Ignore Ivy cache
+**/ivy2/
+**/.ivy2/
+
+# Ignore AWS SDK JARs
+**/aws-java-sdk-*
+**/com/amazonaws_aws-java-sdk-*
+
+# Ignore Python venv and IDE settings
+.venv/
+.idea/
+__pycache__/
+*.pyc
