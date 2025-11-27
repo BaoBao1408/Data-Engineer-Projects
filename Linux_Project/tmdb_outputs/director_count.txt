@@ -1,0 +1,20 @@
+     45 Woody Allen
+     44 ""
+     34 Clint Eastwood
+     29 Steven Spielberg
+     29 Martin Scorsese
+     23 Ridley Scott
+     22 Steven Soderbergh
+     22 Ron Howard
+     21 Joel Schumacher
+     20 Brian De Palma
+     19 Wes Craven
+     19 Tim Burton
+     19 Barry Levinson
+     18 Rob Reiner
+     18 Mike Nichols
+     18 John Carpenter
+     18 David Cronenberg
+     17 Walter Hill
+     17 Tyler Perry
+     17 Stephen Frears
