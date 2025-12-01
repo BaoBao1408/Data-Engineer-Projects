@@ -3,5 +3,5 @@ title_col=original_title
 release_col=release_date
 revenue_col=revenue, budget_col=budget, vote_col=vote_count
 max_revenue_movie=Avatar -> 2781505847
-min_revenue_movie=Wild Card -> 0
+min_revenue_movie=Shattered Glass -> 2
 total_revenue=432720192875

@@ -48,19 +48,19 @@ Linux\_Project/
 
 └── pythonoutput/               # Output from Python project
 
-&nbsp;   ├── sorted\_by\_release.csv
+    ├── sorted\_by\_release.csv
 
-&nbsp;   ├── high\_rating\_gt\_7.5.csv
+    ├── high\_rating\_gt\_7.5.csv
 
-&nbsp;   ├── top10\_by\_profit.csv
+    ├── top10\_by\_profit.csv
 
-&nbsp;   ├── actor\_counts.csv
+    ├── actor\_counts.csv
 
-&nbsp;   ├── director\_counts.csv
+    ├── director\_counts.csv
 
-&nbsp;   ├── genre\_counts.csv
+    ├── genre\_counts.csv
 
-&nbsp;   └── summary.txt
+    └── summary.txt
 
 🚀 1. Project Overview
 
@@ -111,6 +111,12 @@ B) Python Project (Pandas + venv)
 
 
 👉 run\_all\_cli.sh
+
+
+
+chmod +x run\_all\_cli.sh
+
+./run\_all\_cli.sh
 
 
 

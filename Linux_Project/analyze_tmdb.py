@@ -68,10 +68,16 @@ max_rev_row = None
 min_rev_row = None
 total_revenue = None
 if revenue_col:
-    max_val = df[revenue_col].max(skipna=True)
-    min_val = df[revenue_col].min(skipna=True)
-    max_rev_row = df[df[revenue_col] == max_val].head(1)
-    min_rev_row = df[df[revenue_col] == min_val].head(1)
+    df_valid_revenue = df[df[revenue_col] > 0].copy()
+
+    if not df_valid_revenue.empty:
+
+        max_val = df_valid_revenue[revenue_col].max(skipna=True)
+        max_rev_row = df_valid_revenue[df_valid_revenue[revenue_col] == max_val].head(1)
+
+        min_val = df_valid_revenue[revenue_col].min(skipna=True)
+        min_rev_row = df_valid_revenue[df_valid_revenue[revenue_col] == min_val].head(1)
+
     total_revenue = df[revenue_col].sum(skipna=True)
 
 # TASK 5: top 10 by profit
