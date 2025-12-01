@@ -1,0 +1,5 @@
+create venv: & "C:\Users\baoqu\AppData\Local\Programs\Python\Python312\python.exe" -m venv venv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\venv\Scripts\activate
+create requirements.txt:
+pip install -r requirements.txt
