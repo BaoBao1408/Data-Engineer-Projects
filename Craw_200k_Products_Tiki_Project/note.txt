@@ -1,0 +1,21 @@
+python -m venv venv
+.\venv\Scripts\Activate
+
+Ctrl + Shift + P
+Python: Select Interpreter
+.\Craw_Data_Project\venv\Scripts\python.exe
+
+pip install aiohttp aiofiles beautifulsoup4 tqdm
+pip freeze > requirements.txt
+pip install -r requirements.txt
+
+ls -Force
+Activate venv
+.\.venv\Scripts\Activate.ps1
+
+full script:
+python product_download_full.py --ids products-0-200000.csv --outdir output --chunk 1000 --concurrency 50 --limit-per-host 10 --retries 3 --timeout 30 --resume
+
+mini script test:
+Get-Content products-0-200000.csv | Select-Object -First 10000 | Set-Content test_10000_products.csv
+python product_download_full.py --ids test_10000_products.csv --outdir output --chunk 1000 --concurrency 50 --limit-per-host 10 --retries 3 --timeout 30 --resume
