@@ -4,7 +4,7 @@
 
 Author: Quoc Bao
 
-Purpose: Practice Linux command-line tools, CSV processing, text manipulation, and shell scripting using csvkit.
+Purpose: Practice Linux command-line tools, CSV processing, text manipulation, and shell scripting using csvkit \& Python Data Engineering skills using TMDB movie dataset.
 
 
 
@@ -14,43 +14,99 @@ Linux\_Project/
 
 │
 
-├── run\_all\_cli.sh          # Main shell script (all tasks automated)
+├── run\_all\_cli.sh              # Main Linux CLI automation script
 
-├── tmdb.csv                # Original dataset (21 columns, ~10k movies)
+├── analyze\_tmdb.py             # Python analysis script (full 7 tasks)
 
-├── debug.log               # Debug output (optional)
+├── requirements.txt            # Python dependencies
+
+├── tmdb.csv                    # Dataset (21 columns, ~10k movies)
 
 │
 
-└── tmdb\_outputs/           # Folder containing all results
+├── tmdb\_outputs/               # Output from Linux CLI project
+
+│   ├── sorted\_by\_release.csv
+
+│   ├── high\_rating.csv
+
+│   ├── max\_revenue.csv
+
+│   ├── min\_revenue.csv
+
+│   ├── total\_revenue.csv
+
+│   ├── top10\_profit.csv
+
+│   ├── director\_count.txt
+
+│   ├── actor\_count.txt
+
+│   └── genres\_count.txt
+
+│
+
+└── pythonoutput/               # Output from Python project
 
 &nbsp;   ├── sorted\_by\_release.csv
 
-&nbsp;   ├── high\_rating.csv
+&nbsp;   ├── high\_rating\_gt\_7.5.csv
 
-&nbsp;   ├── max\_revenue.csv
+&nbsp;   ├── top10\_by\_profit.csv
 
-&nbsp;   ├── min\_revenue.csv
+&nbsp;   ├── actor\_counts.csv
 
-&nbsp;   ├── total\_revenue.csv
+&nbsp;   ├── director\_counts.csv
 
-&nbsp;   ├── top10\_profit.csv
+&nbsp;   ├── genre\_counts.csv
 
-&nbsp;   ├── director\_count.txt
+&nbsp;   └── summary.txt
 
-&nbsp;   ├── actor\_count.txt
-
-&nbsp;   └── genres\_count.txt
+🚀 1. Project Overview
 
 
 
-🚀 1. Project Description
+This project analyzes the TMDB movie dataset using two different approaches:
 
 
 
-This project analyzes the TMDB movie dataset using Linux commands + csvkit, without Python.
+A) Linux CLI Project (csvkit + Shell Script)
 
-All tasks are executed via a single automated script:
+
+
+✔ No Python
+
+✔ 100% Linux command-line
+
+✔ Uses:
+
+
+
+csvcut, csvsort, csvsql, csvlook
+
+
+
+awk, sed, sort, uniq, head
+
+
+
+B) Python Project (Pandas + venv)
+
+
+
+✔ Python 3.12
+
+✔ Pandas + NumPy
+
+✔ Outputs same 7 tasks as Linux version
+
+✔ Everything saved to pythonoutput/
+
+
+
+
+
+**A) Linux CLI Project (csvkit + Shell Script)**
 
 
 
@@ -244,9 +300,9 @@ echo "6b) Top actors -> $OUT\_DIR/actor\_count.txt"
 
 csvcut -c 7 "$IN" | tail -n +2 | sed '/^$/d' \\
 
-&nbsp; | awk -v RS='|' '{ g=$0; gsub(/^\[ \\t]+|\[ \\t]+$/,"",g); if(g!="") print g }' \\
+  | awk -v RS='|' '{ g=$0; gsub(/^\[ \\t]+|\[ \\t]+$/,"",g); if(g!="") print g }' \\
 
-&nbsp; | sort | uniq -c | sort -nr | head -n 50 > "$OUT\_DIR/actor\_count.txt"
+  | sort | uniq -c | sort -nr | head -n 50 > "$OUT\_DIR/actor\_count.txt"
 
 
 
@@ -256,15 +312,159 @@ echo "Thống kê số lượng phim theo các thể loại:" > "$OUT\_DIR/genre
 
 csvcut -c 14 "$IN" | tail -n +2 | sed '/^$/d' \\
 
-&nbsp; | tr '|' '\\n' \\
+  | tr '|' '\\n' \\
 
-&nbsp; | sed 's/^\[ \\t]\*//; s/\[ \\t]\*$//' \\
+  | sed 's/^\[ \\t]\*//; s/\[ \\t]\*$//' \\
 
-&nbsp; | sed '/^$/d' \\
+  | sed '/^$/d' \\
 
-&nbsp; | sort | uniq -c | sort -nr >> "$OUT\_DIR/genres\_count.txt"
+  | sort | uniq -c | sort -nr >> "$OUT\_DIR/genres\_count.txt"
 
 
 
 echo "Finished. All outputs saved to: $OUT\_DIR/"d
+
+
+
+**🐍 B. Python Project**
+
+
+
+This is the Python version of the same 7 tasks.
+
+
+
+Step 1 — Create \& Activate Virtual Environment
+
+If python launcher not found, use full path:
+
+\& "C:\\Users\\baoqu\\AppData\\Local\\Programs\\Python\\Python312\\python.exe" -m venv venv
+
+
+
+Activate (PowerShell):
+
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
+.\\venv\\Scripts\\activate
+
+
+
+Step 2 — Install dependencies
+
+pip install -r requirements.txt
+
+
+
+requirements.txt
+
+pandas
+
+numpy
+
+matplotlib
+
+
+
+pip freeze > requirements.txt
+
+
+
+Step 3 — Run the Python script
+
+python analyze\_tmdb.py
+
+
+
+
+
+All outputs are saved to:
+
+
+
+python\_tmdb\_outputs/
+
+
+
+📊 5. Python Output Files
+
+
+
+File	Description
+
+sorted\_by\_release.csv	Sorted by release date
+
+high\_rating\_gt\_7.5.csv	Vote > 7.5
+
+top10\_by\_profit.csv	Top profit movies
+
+director\_counts.csv	Director frequency
+
+actor\_counts.csv	Actor frequency
+
+genre\_counts.csv	Genre frequency
+
+summary.txt	Overview of max/min revenue \& metadata
+
+
+
+🧾 6. Python Script Included (analyze\_tmdb.py)
+
+
+
+Full script already included in repo (latest version).
+
+
+
+Handles:
+
+
+
+Flexible column detection
+
+
+
+Missing values
+
+
+
+String list parsing (|, ,, JSON-like lists)
+
+
+
+Automated folder creation
+
+
+
+**🎯 Conclusion**
+
+
+
+You now have 2 complete Data Engineering mini-projects:
+
+
+
+✔ Linux version → Using CLI tools
+
+✔ Python version → Using Pandas
+
+
+
+Both accomplish the same 7 tasks, giving you:
+
+
+
+Shell scripting skills
+
+
+
+CSV manipulation skills
+
+
+
+Python data analysis skills
+
+
+
+Reproducible end-to-end pipeline
 
