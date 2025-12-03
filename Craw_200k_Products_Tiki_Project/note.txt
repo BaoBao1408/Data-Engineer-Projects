@@ -19,3 +19,5 @@ python product_download_full.py --ids products-0-200000.csv --outdir output --ch
 mini script test:
 Get-Content products-0-200000.csv | Select-Object -First 10000 | Set-Content test_10000_products.csv
 python product_download_full.py --ids test_10000_products.csv --outdir output --chunk 1000 --concurrency 50 --limit-per-host 10 --retries 3 --timeout 30 --resume
+python self_product_download.py --ids test_10000_products.csv --outdir output --chunk 1000 --concurrency 50 --limit-per-host 10 --retries 3 --timeout 30 --resume
+python self_product_download.py test_10000_products.csv
