@@ -21,3 +21,58 @@ Get-Content products-0-200000.csv | Select-Object -First 10000 | Set-Content tes
 python product_download_full.py --ids test_10000_products.csv --outdir output --chunk 1000 --concurrency 50 --limit-per-host 10 --retries 3 --timeout 30 --resume
 python self_product_download.py --ids test_10000_products.csv --outdir output --chunk 1000 --concurrency 50 --limit-per-host 10 --retries 3 --timeout 30 --resume
 python self_product_download.py test_10000_products.csv
+
+Remove-Item -Recurse -Force output, output_error
+ri output, output_error -r -force
+
+
+python crawl_data.py --ids products-0-200000.csv --outdir output --chunk 1000 --concurrency 50 --retries 3 --save-raw --resume
+
+python crawl_data.py --ids products-0-200000.csv --outdir output --errordir output_error --chunk 1000 --concurrency 50 --retries 3 --resume
+
+Đánh giá:
+Stack hiện tại (asyncio + aiohttp + aiofile)
+Điểm có thể tối ưu: limit_per_host cân chỉnh hợp lý, tách phần parsing nặng (BeautifulSoup) ra worker khác hoặc batch-process sau khi lưu raw, và giảm overhead bằng orjson hoặc lxml để parse nhanh hơn.
+
+mỗi chunk 1000 id thường hoàn thành trong ~25–36s.
+
+1000 / 25 s ≈ 40 requests/giây
+
+1000 / 36 s ≈ 28 requests/giây
+
+dao dong trung binh 25-50 giay/ 1 chunk
+
+Nguyên nhân tốc độ ở mức đó (chi tiết):
+
+aiohttp + asyncio cho phép nhiều request đồng thời bất chấp I/O — rất phù hợp cho HTTP I/O-bound jobs ⇒ đúng chọn.
+
+TCPConnector(limit=limit_per_host) giới hạn số connection TCP tới host — nếu limit_per_host=10 bạn chỉ có 10 kết nối đồng thời ở tầng TCP → giới hạn throughput. (Bạn đang dùng limit_per_host=10 mặc định trong nhiều phiên bản code trước.)
+
+Bạn dùng concurrency=50 và semaphore giới hạn task concurrency, nhưng connector limit_per_host thấp hơn cũng bóp lại hiệu suất thực tế nếu host là 1 domain.
+
+Network RTT (latency tới API) và time server xử lý trả về JSON ảnh hưởng: nếu RTT ~100–300ms thì concurrency cần lớn hơn để đạt req/s mong muốn.
+
+Disk I/O & JSON parsing / BeautifulSoup: bạn đang parse HTML/description bằng BeautifulSoup — bước này tốn CPU thời gian và làm chậm throughput nếu mã chạy parse ngay sau nhận response.
+
+API rate limiting / throttling: nếu server throttles, bạn sẽ thấy nhiều 429/5xx làm giảm tốc độ.
+
+Python GIL ảnh hưởng khi chạy nhiều parsing CPU-bound (BeautifulSoup) — parsing vẫn single-threaded unless bạn offload.
+
+Tối ưu thực tế (liệt kê, ưu tiên):
+
+Tăng limit_per_host nếu API server chấp nhận (vd 50). Hiệu quả ngay.
+connector = aiohttp.TCPConnector(limit=self.limit_per_host) → set --limit-per-host 50.
+
+Giữ concurrency phù hợp với limit_per_host (ví dụ concurrency=60, limit_per_host=60).
+
+Chuyển parsing nặng ra bước hậu xử lý: chỉ lưu raw (hoặc cleaned minimal) khi crawl, sau đó chạy multi-process để parse/clean (giảm blocking trong event loop).
+
+Thay BeautifulSoup bằng lxml hoặc regex nếu performance quan trọng (lxml faster). Or use selectolax (ultrafast HTML parser) nếu muốn tốc độ cao.
+
+Sử dụng orjson để encode/decode JSON nhanh hơn (await resp.json() dùng built-in; orjson faster but needs manual parse await resp.text() then orjson.loads).
+
+Batch endpoint: kiểm tra API có hỗ trợ multi-get; nếu có, dùng batch để giảm overhead.
+
+Nén output: raw_chunk_{idx}.jsonl.gz nếu muốn lưu raw nhiều mà tiết kiệm disk.
+
+Rate limiting backoff: hiện có backoff + jitter — tốt.
