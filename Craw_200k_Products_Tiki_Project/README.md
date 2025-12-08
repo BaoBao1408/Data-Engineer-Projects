@@ -1,422 +1,544 @@
-Tiki Product Crawler (Async Python Project)
+\# Crawling 200K Tiki Products to PostgreSQL
 
 
 
-This project is an end-to-end asynchronous data crawler designed to fetch product information from Tiki’s public product-detail API.
-
-It uses aiohttp, asyncio, BeautifulSoup, and text-cleaning pipelines to build a clean dataset ready for downstream ETL or analytics workloads.
+This is an end-to-end \*\*Data Engineering mini project\*\* that demonstrates how to:
 
 
 
-📁 Project Structure
+\- Crawl \*\*200,000 product IDs\*\* from an API using \*\*asynchronous Python\*\*
 
-Craw\_Data\_Project/
+\- Store raw data as \*\*JSONL chunks\*\*
 
-│
+\- Handle \*\*resume, retries, and error logging\*\*
 
-├── .venv/                      # Python virtual environment
+\- Load clean data into \*\*PostgreSQL\*\*
 
-├── output/                     # JSONL output files (products\_00001.jsonl, ...)
-
-├── product\_download\_full.py    # main crawler script
-
-├── products-0-200000.csv       # input raw product IDs
-
-├── test\_10000\_products.csv     # optional test subset
-
-├── requirements.txt
-
-└── README.md
+\- Track performance and optimize crawling throughput
 
 
 
-🚀 1. Setup Instructions
-
-1\. Create project folder
-
-mkdir Craw\_Data\_Project
-
-cd Craw\_Data\_Project
-
-code .
+---
 
 
 
-2\. Create and activate a virtual environment
+\## 1. Tech Stack
 
-Windows (PowerShell)
+
+
+\- \*\*Language:\*\* Python 3.x  
+
+\- \*\*Async Crawling:\*\* `asyncio`, `aiohttp`, `aiofiles`  
+
+\- \*\*HTML Parsing:\*\* `beautifulsoup4`  
+
+\- \*\*Utilities:\*\* `tqdm`, `pandas`, `ujson`, `pyarrow`  
+
+\- \*\*Database:\*\* PostgreSQL  
+
+\- \*\*Postgres Driver:\*\* `psycopg2-binary`  
+
+\- \*\*Environment:\*\* `venv`  
+
+\- \*\*Version Control:\*\* Git + GitHub  
+
+
+
+---
+
+
+
+\## 2. Project Structure
+
+
+
+```text
+
+Craw\_200k\_Products\_Tiki\_Project/
+
+├─ .gitignore
+
+├─ README.md
+
+├─ requirements.txt
+
+├─ products-0-200000.csv        # Input: 200K product IDs
+
+├─ crawl\_data.py                # Async crawler
+
+├─ note.txt                     # Development \& performance notes
+
+├─ config.py                    # Read database.ini
+
+├─ connect.py                   # Test connection to PostgreSQL
+
+├─ create\_table.py              # Create destination table
+
+├─ load\_products.py             # Load JSONL data into PostgreSQL
+
+├─ database.ini                 # Database credentials (ignored by git)
+
+├─ output/                      # Crawled JSONL chunks (ignored by git)
+
+└─ output\_error/                # Error logs and failed IDs (ignored by git)
+
+⚠️ The following are NOT committed to GitHub via .gitignore:
+
+
+
+output/
+
+
+
+output\_error/
+
+
+
+\*.json, \*.jsonl
+
+
+
+database.ini
+
+
+
+.venv/
+
+
+
+3\. Environment Setup
+
+
+
+3.1 Create Virtual Environment
 
 python -m venv .venv
 
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+Activate (PowerShell):
+
+
 
 .\\.venv\\Scripts\\Activate.ps1
 
-
-
-macOS / Linux
-
-python3 -m venv .venv
-
-source .venv/bin/activate
+VS Code:
 
 
 
+Ctrl + Shift + P → Python: Select Interpreter → 
 
-
-After activation, you will see:
-
-
-
-(.venv)
+.\\Craw\_200k\_Products\_Tiki\_Project\\.venv\\Scripts\\python.exe
 
 
 
-3\. Install dependencies
+3.2 Install Dependencies
 
 pip install -r requirements.txt
 
+requirements.txt:
 
 
 
+aiohttp>=3.8.0
 
-If you don't have the file yet:
+aiofiles
+
+beautifulsoup4
+
+tqdm
+
+pandas
+
+ujson
+
+pyarrow
+
+psycopg2-binary
+
+(Optional regenerate)
 
 
-
-pip install aiohttp aiofiles beautifulsoup4 tqdm
 
 pip freeze > requirements.txt
 
+4\. PostgreSQL Configuration
 
 
-4\. Select Interpreter in VS Code
 
+4.1 Create Database
 
+CREATE DATABASE "Tiki\_Data";
 
-Press Ctrl + Shift + P
 
 
+4.2 Configure database.ini
 
-Choose Python: Select Interpreter
+\[postgresql]
 
+host=localhost
 
+database=Tiki\_Data
 
-Select:
+user=postgres
 
+password=123456
 
+port=5432
 
-.venv/Scripts/python.exe
+⚠️ This file is ignored by Git to protect credentials.
 
 
 
-📥 2. Preparing Input Data
+4.3 Create Table
 
+python create\_table.py
 
+Table schema:
 
-Copy your product ID CSV to the project folder:
 
 
+CREATE TABLE IF NOT EXISTS tiki\_products (
 
-products-0-200000.csv
+&nbsp;   id           BIGINT PRIMARY KEY,
 
+&nbsp;   name         TEXT,
 
+&nbsp;   url\_key      TEXT,
 
-Create a 1,000-ID test file (recommended before running full)
+&nbsp;   price        BIGINT,
 
-PowerShell:
+&nbsp;   description  TEXT,
 
-Get-Content products-0-200000.csv | Select-Object -First 1000 | Set-Content test\_1000\_products.csv
+&nbsp;   images       JSONB
 
+);
 
 
-macOS/Linux:
 
-head -n 1000 products-0-200000.csv > test\_1000\_products.csv
+5\. Crawling 200K Products
 
 
 
-⚙️ 3. Running the Script
+5.1 Clean Old Output
 
-Run test (1,000 IDs)
+Remove-Item -Recurse -Force output, output\_error
 
-python product\_download\_full.py --ids test\_1000\_products.csv --outdir output\_test --chunk 1000 --concurrency 20 --limit-per-host 10 --retries 3 --timeout 30
+\# or:
 
+ri output, output\_error -r -force
 
 
 
+5.2 Run Crawler
 
-Expected output:
+python crawl\_data.py \\
 
+&nbsp; --ids products-0-200000.csv \\
 
+&nbsp; --outdir output \\
 
-output\_test/
+&nbsp; --errordir output\_error \\
 
-└── products\_00001.jsonl
+&nbsp; --chunk 1000 \\
 
+&nbsp; --concurrency 50 \\
 
+&nbsp; --retries 3 \\
 
-Run full 200,000 IDs (with resume mode)
+&nbsp; --resume
 
-python product\_download\_full.py --ids products-0-200000.csv --outdir output --chunk 1000 --concurrency 50 --limit-per-host 10 --retries 3 --timeout 30 --resume
+Parameters Explained
 
+Parameter	Meaning
 
+--ids	CSV file with product IDs
 
+--outdir	Output folder for crawled JSONL files
 
+--errordir	Folder for error logs
 
-Produces: products\_00001.jsonl, products\_00002.jsonl, ..., products\_000200.jsonl
+--chunk	Number of IDs per batch
 
+--concurrency	Number of async requests
 
+--retries	Retry count on failures
 
-Each file contains 1000 product records in JSON Lines format
+--resume	Resume from last successful run
 
 
 
-🔎 4. Code Flow Explanation
+5.3 Output Files
 
-Step 1: Load IDs
+output/products\_00001.jsonl → products\_00200.jsonl
 
 
 
-load\_ids\_from\_csv()
+output/processed\_success.txt → Resume checkpoint
 
 
 
-Reads CSV or TXT
+output\_error/errors\_summary.json → Error summary
 
 
 
-Removes duplicates
+output\_error/failed\_ids\_to\_retry.txt → Failed IDs + reason
 
 
 
-Returns a clean list of product IDs
+6\. Load Data into PostgreSQL
 
+python load\_products.py
 
+Features:
 
-Step 2: Chunking
 
 
+Supports both JSON array and JSONL
 
-chunk\_size=1000
 
 
+Batch insert using execute\_values
 
-IDs 0–999 → products\_00001.jsonl
 
 
+Auto-upsert using:
 
-IDs 1000–1999 → products\_00002.jsonl
 
 
+ON CONFLICT (id) DO UPDATE
 
-… etc.
 
 
+7\. Validation Queries
 
-Step 3: Async fetching
+-- Total rows
 
+SELECT COUNT(\*) FROM tiki\_products;
 
 
-asyncio + aiohttp handles:
 
+-- First records
 
+SELECT \* FROM tiki\_products LIMIT 5;
 
-concurrency control
 
 
+-- Top 10 highest price products
 
-connection pooling
+SELECT id, name, price
 
+FROM tiki\_products
 
+ORDER BY price DESC
 
-retry logic
+LIMIT 10;
 
 
 
-timeout handling
+-- Search by keyword
 
+SELECT id, name, price
 
+FROM tiki\_products
 
-HTTP error handling (404, 403, etc.)
+WHERE name ILIKE '%xe máy điện%'
 
+LIMIT 20;
 
 
-Step 4: Cleaning product data
 
+-- Extract first image
 
+SELECT id, name, images->0 AS first\_image
 
-extract\_fields():
+FROM tiki\_products
 
+LIMIT 10;
 
 
-unwraps nested JSON (data, product)
 
+8\. Final Results
 
+Metric	Value
 
-extracts:
+Total Input IDs	200,000
 
+Successfully Inserted	198,942
 
+Failed (404 Not Found)	1,058
 
-id
+Start Time	09:27:06
 
+End Time	10:43:05
 
+Total Time	~76 minutes (~1.27 hours)
 
-name
 
 
+9\. Performance Analysis
 
-price
+Stack: asyncio + aiohttp + aiofiles
 
 
 
-description
+concurrency = 50, chunk = 1000
 
 
 
-image URLs
+Average per chunk: 25–36 seconds
 
 
 
-clean\_description():
+Throughput:
 
 
 
-Strip HTML
+1000 / 25s ≈ 40 req/s
 
 
 
-Remove noisy whitespace
+1000 / 36s ≈ 28 req/s
 
 
 
-Keep first 1–2 meaningful sentences
+Bottlenecks
 
+TCP connection limits (limit\_per\_host)
 
 
-Trim to max length
 
+Network latency
 
 
-Step 5: Save output
 
+CPU-bound HTML parsing (BeautifulSoup)
 
 
-Each product → 1 JSON object per line (JSONL format).
 
+API throttling and backoff
 
 
-Example line:
 
+Python GIL during parsing
 
 
-{"id": "200828469", "name": "...", "price": 1149000, "description": "...", "images": \["url1","url2"]}
 
+10\. Optimization Roadmap
 
+Increase limit\_per\_host (50–100)
 
-📦 5. Output Format
 
 
+Separate raw crawling and parsing pipeline
 
-Each output file contains 1000 JSON objects, e.g.:
 
 
+Replace BeautifulSoup with:
 
-products\_00001.jsonl
 
-products\_00002.jsonl
 
-...
+lxml
 
 
 
+selectolax
 
 
-Each line:
 
+Use orjson for faster JSON parsing
 
 
-{"id": "123456", "name": "Product Name", "price": 150000, "description": "Cleaned description...", "images": \["..."]}
 
+Check for batch API endpoints
 
 
 
+Compress raw output (.jsonl.gz)
 
-If error:
 
 
+11\. Git \& Large File Handling
 
-{"id": "123456", "error": "HTTP 404"}
+.gitignore:
 
 
 
-📈 6. Why this project is valuable
+output/
 
+output\_error/
 
+\*.json
 
-You practice real-world Data Engineering skills:
+\*.jsonl
 
+raw\_\*.json
 
+\*.gz
 
-Async I/O at scale
+database.ini
 
+.venv/
 
+\_\_pycache\_\_/
 
-API-based data ingestion
+If files were already tracked:
 
 
 
-HTML → clean text processing
+git rm -r --cached output
 
+git rm -r --cached output\_error
 
+git rm -r --cached \*.jsonl
 
-Error handling \& retries
+git commit -m "Remove output data from git tracking"
 
 
 
-Chunked output
+12\. Summary
 
+✅ Async crawl 200K products
 
+✅ Resume \& retry support
 
-Virtual environment + dependency management
+✅ Full error logging
 
+✅ PostgreSQL ingestion
 
+✅ Performance measurement
 
-Data pipeline design
+✅ Production-style folder structure
 
+✅ Git safe for large data \& secrets
 
 
-JSON normalization
 
+This project demonstrates a real-world data pipeline:
 
 
-This is exactly the kind of logic used before loading data into S3, Glue, Redshift, BigQuery, or Spark.
 
+CSV → Async API Crawl → JSONL → PostgreSQL
 
+It is suitable as a Data Engineer portfolio project.
 
-🎯 7. Next Steps (optional improvements)
 
 
+---
 
-Add --max-chunks for testing
 
 
+If you want, I can also:
 
-Write unit tests for text cleaning functions
+\- Add \*\*architecture diagram\*\*
 
+\- Add \*\*flow chart\*\*
 
+\- Add \*\*ERD for PostgreSQL\*\*
 
-Add logging to file
+\- Add \*\*benchmark comparison before/after optimization\*\*
 
 
 
-Upload JSONL files to S3
+Just tell me ✅
 
-
-
-Build a Glue → Redshift ETL pipeline
-
-
-
-Convert JSONL to Parquet using PyArrow
+baoquocnguyen1408@gmail.com
 

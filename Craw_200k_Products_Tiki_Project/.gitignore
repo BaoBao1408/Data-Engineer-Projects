@@ -1,5 +1,8 @@
 output/
 output_error/
+!output/processed_success.txt
+!output_error/errors_summary.json
+!output_error/failed_ids_to_retry.txt
 *.json
 *.jsonl
 *.parquet
