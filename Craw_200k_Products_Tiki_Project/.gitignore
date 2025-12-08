@@ -1,0 +1,10 @@
+output/
+output_error/
+*.json
+*.jsonl
+*.parquet
+*.csv
+database.ini
+.env
+__pycache__/
+.venv/
