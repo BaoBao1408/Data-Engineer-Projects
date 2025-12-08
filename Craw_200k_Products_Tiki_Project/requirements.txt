@@ -5,3 +5,4 @@ tqdm
 pandas
 ujson
 pyarrow
+psycopg2-binary

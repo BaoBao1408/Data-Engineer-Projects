@@ -30,6 +30,8 @@ python crawl_data.py --ids products-0-200000.csv --outdir output --chunk 1000 --
 
 python crawl_data.py --ids products-0-200000.csv --outdir output --errordir output_error --chunk 1000 --concurrency 50 --retries 3 --resume
 
+ START: 2025-12-08 09:27:06 - FINISH: 2025-12-08 10:43:05 => 1 giờ 15 phút 59 giây ≈ 76 phút (khoảng 1.27 giờ) để crawl xong 200k ID
+
 Đánh giá:
 Stack hiện tại (asyncio + aiohttp + aiofile)
 Điểm có thể tối ưu: limit_per_host cân chỉnh hợp lý, tách phần parsing nặng (BeautifulSoup) ra worker khác hoặc batch-process sau khi lưu raw, và giảm overhead bằng orjson hoặc lxml để parse nhanh hơn.
