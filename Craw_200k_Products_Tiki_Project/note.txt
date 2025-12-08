@@ -27,6 +27,20 @@ Scripts: python crawl_data.py --ids products-0-200000.csv --outdir output --erro
 
 Done đẩy dữ liệu vào Postgres DB 198942 dòng data, 1058 dòng ID lỗi Not Found 404, thời gian hoàn thành crawl 1 giờ 15 phút 59 giây,  file ID successed, failed và nguyên nhân
 
+code git:
+git rm -r --cached output
+git rm -r --cached output_error
+git rm -r --cached *.jsonl
+git commit -m "Remove output data from git tracking"
+git add -f output/processed_success.txt
+git add -f output_error/errors_summary.json
+git add -f output_error/failed_ids_to_retry.txt
+git commit -m "Track crawl success & error summary logs"
+git push
+git add note.txt
+git commit -m "Update project notes"
+git push
+
 Đánh giá:
 Stack hiện tại (asyncio + aiohttp + aiofile)
 Điểm có thể tối ưu: limit_per_host cân chỉnh hợp lý, tách phần parsing nặng (BeautifulSoup) ra worker khác hoặc batch-process sau khi lưu raw, và giảm overhead bằng orjson hoặc lxml để parse nhanh hơn.
