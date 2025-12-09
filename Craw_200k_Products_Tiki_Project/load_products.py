@@ -2,6 +2,7 @@ import os
 import glob
 import json
 import psycopg2
+from psycopg2 import OperationalError, DatabaseError
 from psycopg2.extras import execute_values, Json
 
 from config import load_config
@@ -11,21 +12,34 @@ FILE_PATTERN = "products_*.json*"
 
 
 def iter_products_from_file(path):
-    with open(path, "r", encoding="utf-8") as f:
-        first_char = f.read(1)
-        f.seek(0)
+    try:    
+        with open(path, "r", encoding="utf-8") as f:
+            first_char = f.read(1)
+            f.seek(0)
 
-        if first_char == "[":  
-            data = json.load(f)
-            for obj in data:
-                if obj:
-                    yield obj
-        else:  
-            for line in f:
-                line = line.strip()
-                if line:
-                    yield json.loads(line)
-
+            if first_char == "[":  
+                try:
+                    data = json.load(f)
+                except JSONDecodeError as e:
+                    print(f"[ERROR] Invalid JSON in file {path}: {e}")
+                    return
+                    
+                for obj in data:
+                    if obj:
+                        yield obj
+            else:  
+                for line in f:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        yield json.loads(line)
+                    except JSONDecodeError as e:
+                        print(f"[WARN] Skip bad JSON line in {path}: {e}")
+    except FileNotFoundError:
+        print(f"[ERROR] File not found: {path}")
+    except PermissionError:
+        print(f"[ERROR] Permission denied when reading: {path}")
 
 def insert_batch(cur, batch):
     execute_values(
@@ -89,13 +103,17 @@ def main():
         with psycopg2.connect(**config) as conn:
             with conn.cursor() as cur:
                 for path in files:
-                    load_file(cur, path)
-                    conn.commit()
-
-        print("LOAD DATA SUCCESSFULLY!")
+                    try:
+                        load_file(cur, path)
+                        conn.commit()
+                    except DatabaseError as e:
+                        conn.rollback()
+                        print(f"[ERROR] Failed to load file {path}: {e}")
+        print("🎉 LOAD DATA SUCCESSFULLY!")
+    except OperationalError as e:
+        print(f"[ERROR] Could not connect to PostgreSQL: {e}")
     except Exception as e:
-        print("ERROR WHEN LOADING DATA:", e)
-
+        print(f"[ERROR] Unexpected error when loading data: {e}")
 
 if __name__ == "__main__":
     main()

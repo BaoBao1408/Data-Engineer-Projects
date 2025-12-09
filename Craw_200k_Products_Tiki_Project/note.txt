@@ -87,3 +87,15 @@ Batch endpoint: kiểm tra API có hỗ trợ multi-get; nếu có, dùng batch 
 Nén output: raw_chunk_{idx}.jsonl.gz nếu muốn lưu raw nhiều mà tiết kiệm disk.
 
 Rate limiting backoff: hiện có backoff + jitter — tốt.
+
+- TRY EXCEPTION: Đã bổ sung file-handling exceptions:
+
+Khi đọc file ID CSV (load_ids() trong crawl_data.py)
+
+Khi đọc file JSON/JSONL (iter_products_from_file() trong load_products.py)
+
+Đã bổ sung database exceptions:
+
+Khi kết nối Postgres (connect.py, create_table.py, load_products.py)
+
+Khi insert batch lỗi thì rollback và log rõ lỗi
