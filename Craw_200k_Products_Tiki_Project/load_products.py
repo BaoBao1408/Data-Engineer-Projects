@@ -4,7 +4,7 @@ import json
 import psycopg2
 from psycopg2 import OperationalError, DatabaseError
 from psycopg2.extras import execute_values, Json
-
+from json import JSONDecodeError
 from config import load_config
 
 OUTPUT_DIR = "output"
