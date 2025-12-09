@@ -28,7 +28,11 @@ def main():
             with conn.cursor() as cur:
                 cur.execute(DDL)
                 conn.commit()
-                print("Table tiki_products created/exists already.")
+                print("Table tiki_products Created/Exists already!.")
+    except OperationalError as e:
+        print(f"[ERROR] Database connection failed: {e}")
+    except DatabaseError as e:
+        print(f"[ERROR] Error while executing DDL: {e}")
     except Exception as e:
         print("Error creating table:", e)
 
