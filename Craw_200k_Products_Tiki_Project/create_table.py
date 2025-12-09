@@ -1,4 +1,5 @@
 import psycopg2
+from psycopg2 import DatabaseError, OperationalError
 from config import load_config
 
 # PG_CONFIG = {

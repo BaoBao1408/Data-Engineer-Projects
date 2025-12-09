@@ -17,6 +17,7 @@ import time
 import logging
 import re
 import random
+from pathlib import Path
 from bs4 import BeautifulSoup
 from aiohttp import ClientConnectorError, ServerTimeoutError
 from tqdm import tqdm
@@ -120,6 +121,31 @@ def extract_fields(product_json):
         "description": description,
         "images": images
     }
+
+def load_ids(csv_path: str) -> list[int]:
+    try:
+        path = Path(csv_path)
+        if not path.exists():
+            raise DataFileError(f"Input file not found: {csv_path}")
+
+        ids = []
+        with path.open("r", encoding="utf-8") as f:
+            reader = csv.reader(f)
+            for row in reader:
+                try:
+                    ids.append(int(row[0]))
+                except (ValueError, IndexError):
+                    print(f"[WARN] Invalid row in ID file: {row}")
+        if not ids:
+            raise DataFileError("No valid IDs found in input file.")
+        return ids
+
+    except PermissionError as e:
+        raise DataFileError(f"Permission denied when reading {csv_path}") from e
+    
+class DataFileError(Exception):
+    """Raised when there is a problem reading the input data file."""
+    pass
 
 class ProductDownloader:
     def __init__(self, ids, outdir="output", errordir="output_error", chunk_size=1000,
@@ -312,6 +338,11 @@ def load_ids_from_csv(path):
     return out
 
 def main():
+    try:
+        ids = load_ids(args.ids)
+    except DataFileError as e:
+        print(f"[ERROR] {e}")
+        return
     parser = argparse.ArgumentParser()
     parser.add_argument("--ids", required=True, help="CSV or txt file with one id per line")
     parser.add_argument("--outdir", default="output", help="directory for successful outputs and processed_success.txt")
