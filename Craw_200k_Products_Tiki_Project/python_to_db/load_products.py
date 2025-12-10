@@ -8,6 +8,7 @@ from json import JSONDecodeError
 from config import load_config
 
 OUTPUT_DIR = "output"
+# RETRY_DIR = "retry_output" 
 FILE_PATTERN = "products_*.json*"
 
 
@@ -91,10 +92,20 @@ def main():
     pattern = os.path.join(OUTPUT_DIR, FILE_PATTERN)
     files = sorted(glob.glob(pattern))
 
+    # all_files = []
+
+    # for folder in (OUTPUT_DIR, RETRY_DIR):
+    #     pattern = os.path.join(folder, FILE_PATTERN)
+    #     files = sorted(glob.glob(pattern))
+    #     if files:
+    #         print(f"Found {len(files)} files in {folder}/")
+    #         all_files.extend(files)
+    #     else:
+    #         print(f"No files found in {folder}/ (this is OK if folder not used)")
+
     if not files:
         print("Not Found any Files in Folder: output/")
-        return
-
+        return    
     print(f"TOTAL FILES: {len(files)}")
 
     config = load_config()

@@ -122,26 +122,26 @@ def extract_fields(product_json):
         "images": images
     }
 
-def load_ids(csv_path: str) -> list[int]:
-    try:
-        path = Path(csv_path)
-        if not path.exists():
-            raise DataFileError(f"Input file not found: {csv_path}")
+# def load_ids(csv_path: str) -> list[int]:
+#     try:
+#         path = Path(csv_path)
+#         if not path.exists():
+#             raise DataFileError(f"Input file not found: {csv_path}")
 
-        ids = []
-        with path.open("r", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            for row in reader:
-                try:
-                    ids.append(int(row[0]))
-                except (ValueError, IndexError):
-                    print(f"[WARN] Invalid row in ID file: {row}")
-        if not ids:
-            raise DataFileError("No valid IDs found in input file.")
-        return ids
+#         ids = []  
+#         with path.open("r", encoding="utf-8") as f:
+#             reader = csv.reader(f)
+#             for row in reader:
+#                 try:
+#                     ids.append(int(row[0]))
+#                 except (ValueError, IndexError):
+#                     print(f"[WARN] Invalid row in ID file: {row}")
+#         if not ids:
+#             raise DataFileError("No valid IDs found in input file.")
+#         return ids
 
-    except PermissionError as e:
-        raise DataFileError(f"Permission denied when reading {csv_path}") from e
+#     except PermissionError as e:
+#         raise DataFileError(f"Permission denied when reading {csv_path}") from e
     
 class DataFileError(Exception):
     """Raised when there is a problem reading the input data file."""
@@ -310,39 +310,47 @@ class ProductDownloader:
             logging.warning("Failed to aggregate failed ids: %s", e)
 
 def load_ids_from_csv(path):
+    if not os.path.exists(path):
+        raise DataFileError(f"Input file not found: {path}")
+    
     ids = []
-    with open(path, "r", encoding="utf-8") as f:
+    encodings_to_try = ["utf-8", "utf-8-sig", "utf-16", "latin-1"]
+    last_error = None
+
+    for enc in encodings_to_try:
         try:
-            reader = csv.reader(f)
-            for row in reader:
-                if not row:
-                    continue
-                for cell in row:
-                    cell = cell.strip()
-                    if cell and any(ch.isdigit() for ch in cell):
+            with open(path, "r", encoding=enc) as f:
+                reader = csv.reader(f)
+                for row in reader:
+                    if not row:
+                        continue
+                    cell = row[0].strip()
+                    if cell.isdigit():  
                         ids.append(cell)
-                        break
-        except Exception:
-            f.seek(0)
-            for line in f:
-                s = line.strip()
-                if s:
-                    ids.append(s)
-    # dedupe preserve order
+
+            print(f"[INFO] Loaded IDs using encoding: {enc}")
+            break  
+
+        except UnicodeDecodeError as e:
+            last_error = e
+            continue
+        except PermissionError as e:
+            raise DataFileError(f"Permission denied when reading {path}") from e 
+
+    if not ids:
+        raise ValueError("No valid IDs found in input file after trying multiple encodings.")
+
     seen = set()
     out = []
     for x in ids:
         if x not in seen:
             seen.add(x)
             out.append(x)
+
     return out
 
 def main():
-    try:
-        ids = load_ids(args.ids)
-    except DataFileError as e:
-        print(f"[ERROR] {e}")
-        return
+    
     parser = argparse.ArgumentParser()
     parser.add_argument("--ids", required=True, help="CSV or txt file with one id per line")
     parser.add_argument("--outdir", default="output", help="directory for successful outputs and processed_success.txt")
@@ -354,8 +362,12 @@ def main():
     parser.add_argument("--limit-per-host", type=int, default=10)
     parser.add_argument("--resume", action="store_true", help="resume by skipping ids that previously succeeded (processed_success.txt in outdir)")
     args = parser.parse_args()
-
-    ids = load_ids_from_csv(args.ids)
+    try:
+        ids = load_ids_from_csv(args.ids)
+    except DataFileError as e:
+        print(f"[ERROR] {e}")
+        return
+    # ids = load_ids_from_csv(args.ids)
     logging.info("Loaded %s ids from %s", len(ids), args.ids)
     downloader = ProductDownloader(ids, outdir=args.outdir, errordir=args.errordir, chunk_size=args.chunk,
                                    concurrency=args.concurrency, timeout=args.timeout, retries=args.retries,
