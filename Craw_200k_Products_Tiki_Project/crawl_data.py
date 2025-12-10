@@ -15,68 +15,14 @@ import json
 import os
 import time
 import logging
-import re
 import random
-from pathlib import Path
-from bs4 import BeautifulSoup
 from aiohttp import ClientConnectorError, ServerTimeoutError
 from tqdm import tqdm
+from clean_description import description_pipeline
 
 API_TEMPLATE = "https://api.tiki.vn/product-detail/api/v1/products/{}"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-
-_PROMO_PATTERNS = [
-    r"(?i)\bđây là sản phẩm\b.*", r"(?i)\bshop\b.*", r"(?i)\bchi(ỉ|́|̣)?\s+co(́|́)?\b.*",
-    r"(?i)\btặng kèm\b.*", r"(?i)\bkhuyến mãi\b.*", r"(?i)\bcam kết\b.*",
-    r"(?i)\bmiễn phí\b.*", r"(?i)\bmiễn phí vận chuyển\b.*", r"(?i)\bliên hệ\b.*",
-    r"(?i)\bgiao hàng\b.*", r"(?i)\bthanh toán\b.*", r"(?i)http[s]?://\S+",
-    r"(?i)www\.\S+", r"(?i)\bhot\b.*", r"(?i)\bnew\b.*", r"(?i)\bbest seller\b.*",
-]
-
-def remove_marketing_sentences(text):
-    if not text:
-        return text
-    sents = re.split(r'(?<=[.!?])\s+', str(text))
-    kept = []
-    for s in sents:
-        s_stripped = s.strip()
-        if not s_stripped:
-            continue
-        skip = False
-        for pat in _PROMO_PATTERNS:
-            if re.search(pat, s_stripped):
-                skip = True
-                break
-        if not skip:
-            kept.append(s_stripped)
-    return " ".join(kept).strip()
-
-def clean_description(html_text, max_len=400):
-    if not html_text:
-        return ""
-    if isinstance(html_text, (dict, list)):
-        html_text = str(html_text)
-    soup = BeautifulSoup(html_text, "html.parser")
-    text = soup.get_text(separator=" ", strip=True)
-    text = " ".join(text.split())
-    parts = re.split(r'(?<=[.!?])\s+', text, maxsplit=2)
-    short = " ".join(parts[:2]) if parts else text
-    if len(short) > max_len:
-        short = short[:max_len].rstrip()
-        if not short.endswith((".", "!", "?")):
-            short = short.rsplit(" ", 1)[0] + "..."
-    return short
-
-def description_pipeline(html_text, max_len=400, remove_marketing=True):
-    s = clean_description(html_text, max_len=max_len)
-    if remove_marketing:
-        s = remove_marketing_sentences(s)
-    if len(s) > max_len:
-        s = s[:max_len].rstrip()
-        if not s.endswith((".", "!", "?")):
-            s = s.rsplit(" ", 1)[0] + "..."
-    return s
 
 def extract_fields(product_json):
     if not isinstance(product_json, dict):
@@ -121,27 +67,6 @@ def extract_fields(product_json):
         "description": description,
         "images": images
     }
-
-# def load_ids(csv_path: str) -> list[int]:
-#     try:
-#         path = Path(csv_path)
-#         if not path.exists():
-#             raise DataFileError(f"Input file not found: {csv_path}")
-
-#         ids = []  
-#         with path.open("r", encoding="utf-8") as f:
-#             reader = csv.reader(f)
-#             for row in reader:
-#                 try:
-#                     ids.append(int(row[0]))
-#                 except (ValueError, IndexError):
-#                     print(f"[WARN] Invalid row in ID file: {row}")
-#         if not ids:
-#             raise DataFileError("No valid IDs found in input file.")
-#         return ids
-
-#     except PermissionError as e:
-#         raise DataFileError(f"Permission denied when reading {csv_path}") from e
     
 class DataFileError(Exception):
     """Raised when there is a problem reading the input data file."""
