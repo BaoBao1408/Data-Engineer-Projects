@@ -20,7 +20,16 @@ CREATE TABLE IF NOT EXISTS tiki_products (
     images       JSONB
 );
 """
-
+DDL_RETRY = """
+CREATE TABLE IF NOT EXISTS retry_product_id (
+    id           BIGINT PRIMARY KEY,
+    name         TEXT,
+    url_key      TEXT,
+    price        BIGINT,
+    description  TEXT,
+    images       JSONB
+);
+"""
 def main():
     config = load_config()  
 
@@ -28,8 +37,10 @@ def main():
         with psycopg2.connect(**config) as conn:
             with conn.cursor() as cur:
                 cur.execute(DDL)
+                cur.execute(DDL_RETRY)
                 conn.commit()
                 print("Table tiki_products Created/Exists already!.")
+                print("Table retry_product_id Created/Exists already!.")
     except OperationalError as e:
         print(f"[ERROR] Database connection failed: {e}")
     except DatabaseError as e:

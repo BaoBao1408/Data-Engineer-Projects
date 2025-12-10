@@ -11,6 +11,8 @@ def connect(config):
             return conn
     except OperationalError as e:
         print(f"[ERROR] Could not connect to PostgreSQL: {e}")
+    except DatabaseError as e:
+        print(f"[ERROR] Database error: {e}")
     except Exception as e:
         print(f"[ERROR] Unexpected error while connecting to DB: {e}")
 if __name__ == '__main__':
