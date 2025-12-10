@@ -19,10 +19,22 @@ import random
 from aiohttp import ClientConnectorError, ServerTimeoutError
 from tqdm import tqdm
 from clean_description import description_pipeline
+from discord_utils import send_discord_alert
 
 API_TEMPLATE = "https://api.tiki.vn/product-detail/api/v1/products/{}"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+# DISCORD_WEBHOOK_URL = "https://discord.com/api/webhooks/1448173231675543553/n9_VKPxoJzedBQNAbzRwUclQqpiCxySaGV_bSqUE_8JkperxWhhvXek22Tb2cgaTaIRj"
+
+# async def send_discord_alert(message: str):
+#     if not DISCORD_WEBHOOK_URL:
+#         return
+#     try:
+#         async with aiohttp.ClientSession() as session:
+#             await session.post(DISCORD_WEBHOOK_URL, json={"content": message})
+#     except Exception as e:
+#         logging.warning("Failed to send discord alert: %s", e)
 
 def extract_fields(product_json):
     if not isinstance(product_json, dict):
@@ -286,6 +298,7 @@ def main():
     parser.add_argument("--retries", type=int, default=3)
     parser.add_argument("--limit-per-host", type=int, default=10)
     parser.add_argument("--resume", action="store_true", help="resume by skipping ids that previously succeeded (processed_success.txt in outdir)")
+    parser.add_argument("--force-crash", action="store_true", help="FOR TEST: force a crash to test Discord alert")
     args = parser.parse_args()
     try:
         ids = load_ids_from_csv(args.ids)
@@ -297,7 +310,18 @@ def main():
     downloader = ProductDownloader(ids, outdir=args.outdir, errordir=args.errordir, chunk_size=args.chunk,
                                    concurrency=args.concurrency, timeout=args.timeout, retries=args.retries,
                                    limit_per_host=args.limit_per_host, resume=args.resume)
-    asyncio.run(downloader.run())
+    try:
+        if args.force_crash:
+            raise RuntimeError("Test crash for Discord alert")
+
+        asyncio.run(downloader.run())
+    except Exception as e:
+        logging.exception("Crawl crashed: %s", e)
+        try:
+            asyncio.run(send_discord_alert(f"[Tiki crawler] ❌ Crashed: {e}"))
+        except Exception:
+            pass
+    # asyncio.run(downloader.run())
 
 if __name__ == "__main__":
     main()
