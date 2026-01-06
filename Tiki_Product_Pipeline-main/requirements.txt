@@ -1,0 +1,5 @@
+aiohttp
+pandas
+beautifulsoup4
+lxml
+tqdm
