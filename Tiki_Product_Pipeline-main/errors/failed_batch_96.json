@@ -1,0 +1,800 @@
+[
+  {
+    "product_id": "185568267",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.725752"
+  },
+  {
+    "product_id": "104704602",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.726752"
+  },
+  {
+    "product_id": "176265134",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.735673"
+  },
+  {
+    "product_id": "96844833",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.745613"
+  },
+  {
+    "product_id": "73462116",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.753225"
+  },
+  {
+    "product_id": "118159847",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.760802"
+  },
+  {
+    "product_id": "158422151",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.767802"
+  },
+  {
+    "product_id": "181770745",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.778969"
+  },
+  {
+    "product_id": "93048747",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.788111"
+  },
+  {
+    "product_id": "127674027",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.798122"
+  },
+  {
+    "product_id": "91161265",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.817992"
+  },
+  {
+    "product_id": "117082926",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.834005"
+  },
+  {
+    "product_id": "67842581",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.858033"
+  },
+  {
+    "product_id": "22771417",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.884809"
+  },
+  {
+    "product_id": "118143435",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.905872"
+  },
+  {
+    "product_id": "126896611",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.924945"
+  },
+  {
+    "product_id": "113413053",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.945266"
+  },
+  {
+    "product_id": "114318484",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.961621"
+  },
+  {
+    "product_id": "82502671",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.982764"
+  },
+  {
+    "product_id": "101278973",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:50:59.997990"
+  },
+  {
+    "product_id": "195990426",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.018126"
+  },
+  {
+    "product_id": "117081431",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.036142"
+  },
+  {
+    "product_id": "113059716",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.059691"
+  },
+  {
+    "product_id": "158421808",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.091017"
+  },
+  {
+    "product_id": "131289155",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.115019"
+  },
+  {
+    "product_id": "178775902",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.139789"
+  },
+  {
+    "product_id": "154175551",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.164090"
+  },
+  {
+    "product_id": "107760714",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.187649"
+  },
+  {
+    "product_id": "180397283",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.212232"
+  },
+  {
+    "product_id": "258610145",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T19:51:00.238647"
+  },
+  {
+    "product_id": "113065002",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.262913"
+  },
+  {
+    "product_id": "114324611",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.287828"
+  },
+  {
+    "product_id": "155703523",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.307088"
+  },
+  {
+    "product_id": "175992322",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.323782"
+  },
+  {
+    "product_id": "114380681",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.339580"
+  },
+  {
+    "product_id": "176313091",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.357770"
+  },
+  {
+    "product_id": "180397593",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.376792"
+  },
+  {
+    "product_id": "79315087",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.398014"
+  },
+  {
+    "product_id": "109934211",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.417864"
+  },
+  {
+    "product_id": "109358574",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.436139"
+  },
+  {
+    "product_id": "103306497",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.456838"
+  },
+  {
+    "product_id": "87019702",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.477674"
+  },
+  {
+    "product_id": "158816724",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.496968"
+  },
+  {
+    "product_id": "248671241",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.518365"
+  },
+  {
+    "product_id": "139197651",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.541219"
+  },
+  {
+    "product_id": "73612412",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.564012"
+  },
+  {
+    "product_id": "87670763",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.584923"
+  },
+  {
+    "product_id": "166458557",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.609331"
+  },
+  {
+    "product_id": "175471757",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.630051"
+  },
+  {
+    "product_id": "121597808",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.646952"
+  },
+  {
+    "product_id": "100492746",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.661697"
+  },
+  {
+    "product_id": "98156564",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.677890"
+  },
+  {
+    "product_id": "184777723",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.699910"
+  },
+  {
+    "product_id": "169817631",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.719828"
+  },
+  {
+    "product_id": "167616659",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.741257"
+  },
+  {
+    "product_id": "117083736",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.764026"
+  },
+  {
+    "product_id": "91753902",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.783791"
+  },
+  {
+    "product_id": "125911044",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.803555"
+  },
+  {
+    "product_id": "80692537",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.820784"
+  },
+  {
+    "product_id": "113051064",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.835994"
+  },
+  {
+    "product_id": "139530104",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.852571"
+  },
+  {
+    "product_id": "156188944",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.874388"
+  },
+  {
+    "product_id": "124066021",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.895870"
+  },
+  {
+    "product_id": "162126092",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.916700"
+  },
+  {
+    "product_id": "104703741",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.936889"
+  },
+  {
+    "product_id": "108175172",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.962735"
+  },
+  {
+    "product_id": "101280316",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:00.985711"
+  },
+  {
+    "product_id": "162538759",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.009707"
+  },
+  {
+    "product_id": "139530207",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.035109"
+  },
+  {
+    "product_id": "77874918",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.062363"
+  },
+  {
+    "product_id": "187511419",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.094903"
+  },
+  {
+    "product_id": "125910822",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.117806"
+  },
+  {
+    "product_id": "131177598",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.138589"
+  },
+  {
+    "product_id": "198994259",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.163075"
+  },
+  {
+    "product_id": "82502633",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.184697"
+  },
+  {
+    "product_id": "167851910",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.206903"
+  },
+  {
+    "product_id": "83517863",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.229801"
+  },
+  {
+    "product_id": "125911811",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.252143"
+  },
+  {
+    "product_id": "158654778",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.270880"
+  },
+  {
+    "product_id": "141281812",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.292872"
+  },
+  {
+    "product_id": "166459346",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.314158"
+  },
+  {
+    "product_id": "126896738",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.333715"
+  },
+  {
+    "product_id": "169101815",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.358807"
+  },
+  {
+    "product_id": "116345618",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.381706"
+  },
+  {
+    "product_id": "155647986",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.402785"
+  },
+  {
+    "product_id": "107227640",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.424686"
+  },
+  {
+    "product_id": "162976249",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T19:51:01.446682"
+  },
+  {
+    "product_id": "242717536",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.472584"
+  },
+  {
+    "product_id": "113050586",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.493584"
+  },
+  {
+    "product_id": "7973548",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.515173"
+  },
+  {
+    "product_id": "146515172",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.538731"
+  },
+  {
+    "product_id": "217520058",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.561855"
+  },
+  {
+    "product_id": "154897486",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.584902"
+  },
+  {
+    "product_id": "173582668",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.607877"
+  },
+  {
+    "product_id": "199251334",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.632000"
+  },
+  {
+    "product_id": "176405376",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.656699"
+  },
+  {
+    "product_id": "154893275",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.678906"
+  },
+  {
+    "product_id": "125910410",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.699799"
+  },
+  {
+    "product_id": "176682850",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.724121"
+  },
+  {
+    "product_id": "171957111",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.743733"
+  },
+  {
+    "product_id": "129392383",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.767720"
+  },
+  {
+    "product_id": "7973539",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.789276"
+  },
+  {
+    "product_id": "192382358",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.807837"
+  },
+  {
+    "product_id": "201881722",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.831819"
+  },
+  {
+    "product_id": "158673212",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.853805"
+  },
+  {
+    "product_id": "167855939",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.879855"
+  },
+  {
+    "product_id": "166458723",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.904681"
+  },
+  {
+    "product_id": "262525262",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.924639"
+  },
+  {
+    "product_id": "41887232",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.946397"
+  },
+  {
+    "product_id": "154919472",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.969773"
+  },
+  {
+    "product_id": "158657907",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:01.990835"
+  },
+  {
+    "product_id": "194393763",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:02.012403"
+  },
+  {
+    "product_id": "158652361",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:02.033975"
+  },
+  {
+    "product_id": "113424700",
+    "batch": 96,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T19:51:02.057745"
+  }
+]

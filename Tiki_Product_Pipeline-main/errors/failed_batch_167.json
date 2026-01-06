@@ -1,0 +1,23 @@
+[
+  {
+    "product_id": "83940654",
+    "batch": 167,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:01.062006"
+  },
+  {
+    "product_id": "177587033",
+    "batch": 167,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:01.063279"
+  },
+  {
+    "product_id": "103887306",
+    "batch": 167,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:01.077361"
+  }
+]

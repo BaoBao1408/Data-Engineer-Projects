@@ -1,0 +1,191 @@
+[
+  {
+    "product_id": "202799211",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T20:17:24.063614"
+  },
+  {
+    "product_id": "244168512",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.063614"
+  },
+  {
+    "product_id": "150933300",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.073933"
+  },
+  {
+    "product_id": "176784090",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.081864"
+  },
+  {
+    "product_id": "195340764",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.093418"
+  },
+  {
+    "product_id": "155340484",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.103416"
+  },
+  {
+    "product_id": "168563295",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.115528"
+  },
+  {
+    "product_id": "253242609",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.126056"
+  },
+  {
+    "product_id": "261816064",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.137669"
+  },
+  {
+    "product_id": "262566521",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.150251"
+  },
+  {
+    "product_id": "253663568",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.163392"
+  },
+  {
+    "product_id": "260451149",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.176970"
+  },
+  {
+    "product_id": "183042655",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.188526"
+  },
+  {
+    "product_id": "252398747",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.203805"
+  },
+  {
+    "product_id": "51009066",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.217647"
+  },
+  {
+    "product_id": "1734977",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.232187"
+  },
+  {
+    "product_id": "78940858",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.245253"
+  },
+  {
+    "product_id": "157349356",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.260448"
+  },
+  {
+    "product_id": "110978792",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.276001"
+  },
+  {
+    "product_id": "57988184",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.289665"
+  },
+  {
+    "product_id": "110978890",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.306579"
+  },
+  {
+    "product_id": "168268115",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.327170"
+  },
+  {
+    "product_id": "31698428",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.343442"
+  },
+  {
+    "product_id": "960813",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.370841"
+  },
+  {
+    "product_id": "890525",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.392680"
+  },
+  {
+    "product_id": "2632465",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:17:24.406760"
+  },
+  {
+    "product_id": "35227126",
+    "batch": 182,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T20:17:24.428599"
+  }
+]
