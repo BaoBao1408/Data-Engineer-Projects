@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS brand (
     country         VARCHAR(50),
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
+DROP INDEX IF EXISTS idx_brand_name;
 CREATE INDEX idx_brand_name ON brand(brand_name);
 
 -- ===============================
@@ -27,8 +27,9 @@ CREATE TABLE IF NOT EXISTS category (
     level               SMALLINT NOT NULL,
     created_at          TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
-
+DROP INDEX IF EXISTS idx_category_parent;
 CREATE INDEX idx_category_parent ON category(parent_category_id);
+DROP INDEX IF EXISTS idx_category_name;
 CREATE INDEX idx_category_name ON category(category_name);
 
 -- ===============================
@@ -42,7 +43,7 @@ CREATE TABLE IF NOT EXISTS seller (
     rating          NUMERIC(2,1) CHECK (rating BETWEEN 0 AND 5),
     country         VARCHAR(50) DEFAULT 'Vietnam'
 );
-
+DROP INDEX IF EXISTS idx_seller_type;
 CREATE INDEX idx_seller_type ON seller(seller_type);
 
 -- ===============================
@@ -62,6 +63,9 @@ CREATE TABLE IF NOT EXISTS product (
     is_active       BOOLEAN DEFAULT TRUE
 );
 
+DROP INDEX IF EXISTS idx_product_category;
+DROP INDEX IF EXISTS idx_product_seller;
+DROP INDEX IF EXISTS idx_product_brand;
 CREATE INDEX idx_product_category ON product(category_id);
 CREATE INDEX idx_product_seller ON product(seller_id);
 CREATE INDEX idx_product_brand ON product(brand_id);
@@ -87,6 +91,9 @@ CREATE TABLE IF NOT EXISTS orders (
     created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+DROP INDEX IF EXISTS idx_orders_seller;
+DROP INDEX IF EXISTS idx_orders_date;
+DROP INDEX IF EXISTS idx_orders_status;
 CREATE INDEX idx_orders_seller ON orders(seller_id);
 CREATE INDEX idx_orders_date ON orders(order_date);
 CREATE INDEX idx_orders_status ON orders(status);
@@ -103,6 +110,14 @@ CREATE TABLE IF NOT EXISTS order_item (
     subtotal        NUMERIC(12,2) NOT NULL CHECK (subtotal >= 0)
 );
 
+ALTER TABLE order_item
+ADD COLUMN IF NOT EXISTS order_date TIMESTAMP;
+
+ALTER TABLE order_item
+ADD COLUMN IF NOT EXISTS created_at TIMESTAMP;
+
+DROP INDEX IF EXISTS idx_order_item_order;
+DROP INDEX IF EXISTS idx_order_item_product;
 CREATE INDEX idx_order_item_order ON order_item(order_id);
 CREATE INDEX idx_order_item_product ON order_item(product_id);
 
@@ -119,6 +134,7 @@ CREATE TABLE IF NOT EXISTS promotion (
     end_date           DATE NOT NULL CHECK (end_date > start_date)
 );
 
+DROP INDEX IF EXISTS idx_promotion_date;
 CREATE INDEX idx_promotion_date ON promotion(start_date, end_date);
 
 -- ===============================
@@ -132,6 +148,8 @@ CREATE TABLE IF NOT EXISTS promotion_product (
     UNIQUE (promotion_id, product_id)
 );
 
+DROP INDEX IF EXISTS idx_promo_product_promo;
+DROP INDEX IF EXISTS idx_promo_product_product;
 CREATE INDEX idx_promo_product_promo ON promotion_product(promotion_id);
 CREATE INDEX idx_promo_product_product ON promotion_product(product_id);
 

@@ -1,0 +1,24 @@
+Query: Q06 - Orders by Seller in October
+Phase: Optimized (Monthly Partitioned Orders)
+Purpose:
+- Count the number of orders per seller during October
+- Evaluate the impact of monthly partitioning on seller-based, time-filtered queries
+Execution Summary:
+- Partition Strategy : Range partitioning by order_date (monthly)
+- Partition Pruning  : Enabled (only orders_2025_10 scanned)
+- Scan Type          : Parallel Sequential Scan on orders_2025_10
+- Workers Used       : 2 parallel workers
+- Rows Scanned       : ~427,280 rows per worker
+- Aggregation        : Parallel HashAggregate followed by Finalize GroupAggregate
+- Group Key          : seller_id
+- Sort Method        : In-memory quicksort
+- Memory Usage       : ~30–48 KB per worker
+- Planning Time      : 0.294 ms
+- Execution Time     : 226.395 ms
+Analysis:
+- Monthly partitioning enables effective partition pruning, limiting scans to a single partition
+- Parallel sequential scan efficiently processes the October data subset
+- Aggregation at the seller level is performed in parallel with minimal memory usage
+- Sorting operations remain fully in memory without any disk spill
+- Execution time is significantly reduced compared to scanning multiple partitions or the full table
+- This plan clearly demonstrates the benefit of partitioning for highly selective time-based queries

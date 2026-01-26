@@ -12,6 +12,18 @@ from utils.time_helper import random_date_between
 PROMO_START_DATE = date(2022, 1, 1)
 PROMO_END_DATE = date(2025, 12, 31)
 
+
+def generate_promotion_discount():
+    discount_type = random.choice(DISCOUNT_TYPES)
+
+    if discount_type == "percentage":
+        discount_value = random.randint(5, 20)   # realistic %
+
+    else:  # fixed_amount
+        discount_value = random.choice([10, 20, 30, 50, 100])
+
+    return discount_type, discount_value
+
 def generate_promotions():
 
     state = load_checkpoint()
@@ -28,7 +40,7 @@ def generate_promotions():
         
     log("Generating promotions...")
 
-    rows = []
+    rows = []   
 
     for i in range(DATA_VOLUME["promotion"]):
         # start_date trong 2022–2025
@@ -44,11 +56,13 @@ def generate_promotions():
             PROMO_END_DATE
         )
 
+        discount_type, discount_value = generate_promotion_discount()
+
         rows.append((
             f"Campaign {i}",
             random.choice(PROMOTION_TYPES),
-            random.choice(DISCOUNT_TYPES),
-            random.randint(5, 50),
+            discount_type,
+            discount_value,
             start,
             end,
         ))

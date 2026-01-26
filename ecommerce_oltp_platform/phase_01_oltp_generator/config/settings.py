@@ -63,3 +63,15 @@ PROMOTION_TYPES = [
 # ---------- TIME RANGE ----------
 START_YEAR = 2022
 END_YEAR = 2025
+
+# ---------- ORDER DATE RANGE ----------
+ORDER_DATE_RANGE = {
+    "start": "2025-08-01",
+    "end": "2025-10-31",
+}
+
+ORDER_STATUS_DISTRIBUTION = {
+    "DELIVERED": 0.8,
+    "CANCELLED": 0.1,
+    "PLACED": 0.1,
+}

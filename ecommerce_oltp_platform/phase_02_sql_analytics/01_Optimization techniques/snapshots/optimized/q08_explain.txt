@@ -1,0 +1,33 @@
+Query: Q08 - Products Sold per Seller
+Phase: Optimized (Monthly Partitioned Orders & Order Items)
+Purpose:
+- Calculate total quantity of products sold by each seller
+- Evaluate performance of seller-level aggregation on partitioned fact tables
+Execution Summary:
+- Partition Strategy : Monthly range partitioning on orders and order_item
+- Scan Type          : Parallel Sequential Scan on order_item and orders partitions
+- Partitions Scanned :
+  - order_item_2025_08, order_item_2025_09, order_item_2025_10
+  - orders_2025_08, orders_2025_09, orders_2025_10
+- Append Strategy    : Parallel Append
+- Join Type          :
+  - Parallel Hash Join (order_item → orders)
+  - Hash Join (orders → seller)
+- Workers Used       : 2 parallel workers
+- Rows Processed     : ~4.4 million order_item rows per worker
+- Aggregation        : Parallel HashAggregate followed by Finalize GroupAggregate
+- Group Key          : seller_id
+- Sorting Strategy  : In-memory quicksort (ORDER BY SUM(quantity) DESC)
+- Memory Usage       : ~35 KB for sorting, ~64 KB per worker for aggregation
+- Planning Time      : 0.282 ms
+- Execution Time     : 7,316.100 ms
+Analysis:
+- Partition pruning reduces scan scope to three monthly partitions,
+  but a large volume of fact data is still processed
+- The query requires joining two large fact tables before aggregation,
+  resulting in high CPU and memory costs
+- Aggregation is performed at seller level, producing a small result set
+- Sorting cost is minimal and fully in memory
+- Execution time is dominated by join and aggregation workload rather than sorting
+- Compared to baseline, partitioning improves scan efficiency
+  but cannot eliminate the inherent cost of large fact-to-fact joins

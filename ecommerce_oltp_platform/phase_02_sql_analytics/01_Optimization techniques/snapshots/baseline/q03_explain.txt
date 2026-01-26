@@ -1,0 +1,21 @@
+Query: Q03 - Filter order_item by product_id
+Phase: Optimized
+Purpose:
+- Retrieve order item records for a specific range of product_id values
+Execution Summary:
+- Scan Type       : Parallel Bitmap Heap Scan on order_item
+- Index Used      : idx_order_item_product
+- Index Scan Type : Bitmap Index Scan
+- Filter Condition: product_id > 50 AND product_id <= 100
+- Workers Used    : 2 parallel workers
+- Rows Returned   : ~631,772 rows
+- Rows Removed    : ~2,239,621 rows (index recheck)
+- Heap Blocks     : ~20,045 exact, ~23,116 lossy
+- Execution Time  : 1273.102 ms
+Analysis:
+- The query uses a B-tree index on product_id to identify matching rows
+- Bitmap Index Scan is chosen due to the large result set returned by the range condition
+- Bitmap Heap Scan efficiently batches heap page access instead of random I/O
+- Parallel execution is applied to speed up heap scanning
+- Index recheck occurs due to lossy bitmap pages, which is expected for large ranges
+- Overall performance is significantly improved compared to a full sequential scan

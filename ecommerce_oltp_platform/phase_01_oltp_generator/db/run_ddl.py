@@ -1,17 +1,21 @@
+from pathlib import Path
 from sqlalchemy import text
+from utils.logger import log
 from db.connection import engine
 
-DDL_FILE = "db/ddl.sql"
 
 def run_ddl():
-    with open(DDL_FILE, "r", encoding="utf-8") as f:
-        ddl_sql = f.read()
+    ddl_path = Path(__file__).parent / "ddl.sql"
 
-    with engine.connect() as conn:
+    log(f"Running DDL from {ddl_path}")
+
+    ddl_sql = ddl_path.read_text(encoding="utf-8")
+
+    with engine.begin() as conn:
         conn.execute(text(ddl_sql))
-        conn.commit()
 
-    print("DDL executed successfully")
+    log("DDL executed successfully")
+
 
 if __name__ == "__main__":
     run_ddl()

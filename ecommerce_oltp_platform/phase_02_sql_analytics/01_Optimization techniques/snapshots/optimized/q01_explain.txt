@@ -1,0 +1,24 @@
+Query: Q01 - Total Revenue per Month
+Phase: Optimized (Monthly Partitioned Orders)
+Purpose:
+- Calculate total revenue aggregated by month
+- Evaluate the impact of monthly partitioning on time-based aggregation queries
+Execution Summary:
+- Partition Strategy : Range partitioning by order_date (monthly)
+- Scan Type          : Parallel Sequential Scan on monthly partitions
+- Partitions Scanned : orders_2025_08, orders_2025_09, orders_2025_10
+- Append Strategy    : Parallel Append
+- Workers Used       : 2 parallel workers
+- Rows Scanned       : ~1.27 million rows per worker (partitioned scope)
+- Aggregation        : Parallel HashAggregate followed by Finalize GroupAggregate
+- Group Key          : date_trunc('month', order_date)
+- Sort Method        : In-memory quicksort
+- Memory Usage       : ~25–40 KB per worker
+- Execution Time     : 701.327 ms
+Analysis:
+- Monthly range partitioning enables the planner to scan only relevant partitions
+- Parallel Append efficiently combines scans from multiple monthly partitions
+- Aggregation is performed in parallel at the month level, producing a very small result set
+- All sorting operations are performed fully in memory with minimal overhead
+- Compared to the baseline full table scan, execution time is significantly reduced
+- This plan demonstrates effective partition pruning and reduced scan scope for time-based analytics

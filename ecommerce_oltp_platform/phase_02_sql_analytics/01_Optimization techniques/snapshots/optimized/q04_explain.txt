@@ -1,0 +1,25 @@
+Query: Q04 - Order with Highest Total Amount
+Phase: Optimized (Monthly Partitioned Orders)
+Purpose:
+- Identify the order with the highest total_amount
+- Evaluate the effectiveness of partitioning and top-N optimization
+Execution Summary:
+- Partition Strategy : Range partitioning by order_date (monthly)
+- Scan Type          : Parallel Sequential Scan on monthly partitions
+- Partitions Scanned : orders_2025_08, orders_2025_09, orders_2025_10
+- Append Strategy    : Parallel Append
+- Workers Used       : 2 parallel workers
+- Sorting Strategy  : Top-N Heapsort (ORDER BY total_amount DESC LIMIT 1)
+- Sort Method        : In-memory top-N heapsort
+- Memory Usage       : ~25 KB per worker
+- Rows Returned      : 1
+- Planning Time      : 2.048 ms
+- Execution Time     : 581.337 ms
+Analysis:
+- Monthly partitioning restricts scans to relevant partitions only
+- Parallel Append efficiently combines data from multiple monthly partitions
+- The LIMIT clause enables PostgreSQL to use a top-N heapsort strategy
+- Sorting is performed entirely in memory with minimal overhead
+- Only a single row is returned, reducing downstream processing cost
+- Execution time is dominated by scanning partitioned fact data rather than sorting
+- Compared to the baseline full-table scan and full sort, performance is significantly improved

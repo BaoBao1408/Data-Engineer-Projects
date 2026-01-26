@@ -1,0 +1,27 @@
+Query: Q05 - Products with Highest Quantity Sold
+Phase: Optimized (Monthly Partitioned Order Item)
+Purpose:
+- Identify top N products with the highest total quantity sold
+- Evaluate the impact of partitioning on product-level aggregation queries
+Execution Summary:
+- Partition Strategy : Range partitioning by order_date (monthly)
+- Scan Type          : Parallel Sequential Scan on order_item partitions
+- Partitions Scanned : order_item_2025_08, order_item_2025_09, order_item_2025_10
+- Append Strategy    : Parallel Append
+- Workers Used       : 2 parallel workers
+- Aggregation        : Parallel HashAggregate followed by Finalize GroupAggregate
+- Group Key          : product_id
+- Sorting Strategy  : Top-N Heapsort (ORDER BY SUM(quantity) DESC LIMIT 10)
+- Sort Method        : In-memory top-N heapsort
+- Memory Usage       : ~25 KB for top-N sort, ~200 KB for aggregation
+- Rows Returned      : 10
+- Planning Time      : 0.198 ms
+- Execution Time     : 1,546.015 ms
+Analysis:
+- Monthly partitioning restricts scans to relevant order_item partitions
+- Parallel Append efficiently combines large volumes of fact data
+- Aggregation is performed at the product level, producing a moderate result set
+- The LIMIT clause enables PostgreSQL to apply a top-N heapsort strategy
+- Sorting remains fully in memory with minimal overhead
+- Execution time is dominated by scanning and aggregating large fact partitions
+- Compared to the baseline full-table scan, the optimized plan reduces overall execution cost

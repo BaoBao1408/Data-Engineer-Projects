@@ -1,0 +1,20 @@
+Query: Filter data in order_item by product_id
+Phase: Optimized (Partition + Index)
+Purpose:
+- Retrieve order_item records for a specific product_id within a given month
+Execution Summary:
+- Partition Pruning : Enabled (only order_item_2025_10 scanned)
+- Scan Type         : Bitmap Heap Scan on order_item_2025_10
+- Index Used        : Bitmap Index Scan on order_item_2025_10_product_id_idx
+- Index Condition   : product_id = 100
+- Rows Returned     : 4,404
+- Heap Blocks Read  : 4,215
+- Planning Time     : 0.131 ms
+- Execution Time    : 8.825 ms
+Analysis:
+- Partition pruning successfully limits the scan to a single monthly partition
+- Bitmap index scan efficiently filters rows by product_id
+- Heap recheck confirms row visibility after index lookup
+- No full table scan or parallel scan is required
+- Query execution time is significantly reduced compared to baseline
+- This plan demonstrates the effectiveness of combining range partitioning with indexing

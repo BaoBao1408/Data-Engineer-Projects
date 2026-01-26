@@ -22,7 +22,8 @@ def update_order_totals():
                 FROM order_item oi                
                 GROUP BY oi.order_id
             ) s
-            WHERE o.order_id = s.order_id;
+            WHERE o.order_id = s.order_id
+                AND (o.total_amount IS NULL OR o.total_amount = 0);
         """))
 
     log("orders.total_amount updated successfully")

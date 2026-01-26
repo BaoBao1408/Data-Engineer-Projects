@@ -1,0 +1,21 @@
+Query: Q06 - Orders by Seller in October
+Phase: Optimized
+Purpose:
+- Analyze order activity per seller during the month of October
+Execution Summary:
+- Scan Type       : Parallel Sequential Scan on orders
+- Filter Applied  : order_date >= '2025-10-01' AND order_date < '2025-11-01'
+- Partition Pruning: Enabled (date range filter)
+- Workers Used    : 2 parallel workers
+- Rows Scanned    : ~1.27 million rows (after pruning)
+- Rows Removed    : ~0.84 million rows by date filter
+- Aggregation     : Parallel HashAggregate (group by seller_id)
+- Sort Method     : In-memory quicksort
+- Memory Usage    : ~48 KB for aggregation, ~30 KB for sort per worker
+- Execution Time  : 500.323 ms
+Analysis:
+- Date range filtering significantly reduces the number of scanned rows
+- Parallel sequential scan efficiently processes remaining partitions
+- Aggregation by seller_id is handled via parallel hash aggregation
+- In-memory sorting avoids disk spill and minimizes overhead
+- Query performance benefits primarily from correct date filtering and parallel execution

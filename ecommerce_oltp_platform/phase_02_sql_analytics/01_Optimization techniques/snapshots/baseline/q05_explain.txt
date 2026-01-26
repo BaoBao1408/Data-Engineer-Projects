@@ -1,0 +1,22 @@
+Query: Q05 - Top products by quantity sold
+Phase: Baseline
+Purpose:
+- Identify the top products with the highest total quantity sold across all orders
+Execution Summary:
+- Scan Type       : Parallel Sequential Scan on order_item
+- Workers Used    : 2 parallel workers
+- Rows Scanned    : ~5.5 million order_item rows
+- Aggregation     : Parallel HashAggregate (group by product_id)
+- Aggregate Mode  : Partial → Finalize GroupAggregate
+- Sort Method     : Top-N Heapsort
+- Sort Key        : SUM(quantity) DESC
+- Limit Applied   : 10
+- Memory Usage    : ~193 KB for aggregation, ~25 KB for top-N sort
+- Execution Time  : 1104.686 ms
+Analysis:
+- The query performs a full parallel scan of the order_item table due to lack of filtering predicates
+- Quantities are aggregated by product_id using parallel hash aggregation
+- Partial aggregation is performed by each worker and finalized after gathering results
+- Sorting is required to rank products by total quantity sold
+- Top-N heapsort efficiently limits sorting to the top 10 results
+- Overall performance is constrained by the need to scan and aggregate the entire dataset
