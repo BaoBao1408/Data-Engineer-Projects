@@ -95,3 +95,7 @@ Each query includes:
 │   └── call_reports.sql
 ├── notes.md
 └── README.md
+
+## 🙌 Author
+## 🙌 Name: Quoc Bao
+## 🙌 Email: Baoquocnguyen1408@gmail.com

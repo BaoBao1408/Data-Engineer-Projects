@@ -234,3 +234,7 @@ These findings directly motivate Phase 02:
 ➡️ **Phase 02 – Making Dynamic Reports (Functions & Procedures)**
 
 Where performance-optimized tables will be used to build reusable, parameterized analytical reports.
+
+## 🙌 Author
+## 🙌 Name: Quoc Bao
+## 🙌 Email: Baoquocnguyen1408@gmail.com

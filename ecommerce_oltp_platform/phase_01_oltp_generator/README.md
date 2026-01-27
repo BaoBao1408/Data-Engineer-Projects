@@ -226,3 +226,7 @@ Built as part of a hands-on **Data Engineering learning path**, focused on:
 
 If you are reviewing this repository:
 👉 this dataset is intentionally designed to be **hard** — just like real life.
+
+## 🙌 Author
+## 🙌 Name: Quoc Bao
+## 🙌 Email: Baoquocnguyen1408@gmail.com

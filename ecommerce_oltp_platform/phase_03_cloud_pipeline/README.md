@@ -74,3 +74,7 @@ PostgreSQL (OLTP)
 ## Status
 🚧 Planned – Architecture & design completed  
 Implementation will follow after Phase 02 validation
+
+## 🙌 Author
+## 🙌 Name: Quoc Bao
+## 🙌 Email: Baoquocnguyen1408@gmail.com
