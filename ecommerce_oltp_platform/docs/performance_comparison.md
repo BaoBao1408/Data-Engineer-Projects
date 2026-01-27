@@ -10,7 +10,7 @@
 | Orders by seller in October | ~500 | ~226 | ~2.2x |
 | Products sold per seller | ~7,300 | ~5,300 | ~1.4x |
 
-# (B) Execution Plan Changes (Quan trọng)
+# (B) Execution Plan Changes 
 ## Key Execution Plan Improvements
 
 ### Before Optimization
