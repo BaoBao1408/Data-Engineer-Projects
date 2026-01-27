@@ -16,8 +16,8 @@ SELECT
     COUNT(DISTINCT o.order_id)      AS total_orders,
     SUM(oi.quantity)                AS total_quantity,
     SUM(oi.subtotal)                AS total_revenue
-FROM orders_partitioned o
-JOIN order_item_partitioned oi
+FROM public.orders_partitioned o
+JOIN public.order_item_partitioned oi
     ON o.order_id = oi.order_id
 WHERE o.order_date >= p_start_date
   AND o.order_date <  p_end_date
