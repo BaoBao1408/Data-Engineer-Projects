@@ -8,4 +8,4 @@ SELECT *
 FROM order_item_partitioned
 WHERE order_date >= '2025-10-01'
   AND order_date <  '2025-11-01'
-  AND product_id = 100;
+  AND product_id = 100; 

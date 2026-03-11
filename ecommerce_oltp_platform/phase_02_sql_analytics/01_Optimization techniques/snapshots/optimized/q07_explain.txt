@@ -1,0 +1,23 @@
+Query: Q07 - Revenue per Product per Month
+Phase: Optimized (Monthly Partitioned Orders & Order Items)
+Purpose:
+- Calculate monthly revenue for each product
+- Analyze performance of a high-cardinality aggregation query on partitioned fact tables
+Execution Summary:
+- Partition Strategy : Monthly range partitioning on orders and order_item
+- Scan Type          : Parallel Sequential Scan on all relevant monthly partitions
+- Partitions Scanned :
+  - order_item_2025_08, order_item_2025_09, order_item_2025_10
+  - orders_2025_08, orders_2025_09, orders_2025_10
+- Append Strategy    : Parallel Append
+- Join Type          :
+  - Hash Join (order_item → product)
+  - Parallel Hash Join (order_item → orders)
+- Workers Used       : 2 parallel workers
+- Rows Processed     : ~4.4 million order_item rows per worker
+- Aggregation        : Parallel HashAggregate followed by Finalize GroupAggregate
+- Group Key          : month(order_date), product_id
+- Sorting Strategy  : Incremental Sort (ORDER BY month, SUM(subtotal) DESC)
+- Sort Method        : In-memory quicksort (per group)
+- Planning Time      : 14.195 ms
+- Execution Time     : 10,080.331 ms
