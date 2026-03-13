@@ -1,8 +1,14 @@
 models:
-    - name: dim_listings_cleaned
-      description: Primary key for the listing
+    - name: dim_listings_cleaned   
+      data_tests:
+        - minimum_row_count:
+            arguments:
+              min_rows: 10000000
+              severity: warn
+
       columns:
         - name: listing_id
+          description: Primary key for the listing
           data_tests: 
             - unique
             - not_null
@@ -24,4 +30,43 @@ models:
                 values: ['Entire home/apt',
                         'Private room',
                         'Shared room',
-                        'Hotel room - break this!']
+                        'Hotel room']
+
+        - name: minimum_nights
+          description: Minimum number of nights for the listing
+          data_type: integer
+          data_tests:
+            - positive_values
+
+    - name: dim_hosts_cleaned
+      description: Cleansed table for the Airbnb hosts
+      config:
+        contract:
+          enforced: true
+      columns:
+        - name: host_id
+          description: The id of the host. This is the primary key.
+          data_type: integer
+          data_tests: 
+            - unique
+            - not_null
+
+        - name: host_name
+          description: The name of the host.
+          data_type: string
+          data_tests:
+            - not_null
+
+        - name: is_superhost
+          description: Defines whether the hosts is a superhost.
+          data_type: string
+          data_tests:
+            - accepted_values:
+                arguments:
+                    values: ['t', 'f']
+
+        - name: updated_at
+          data_type: timestamp
+
+        - name: created_at
+          data_type: timestamp

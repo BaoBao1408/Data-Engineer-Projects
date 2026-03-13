@@ -1,0 +1,7 @@
+dbt compile --inline "{% set x = 5 %}{% set y = 3 %} {{ x + y }}"
+
+dbt compile --inline 'select_positive_values("dim_listings_cleaned", "minimum_nights")'
+
+dbt compile --inline '{{select_positive_values("dim_listings_cleaned", "minimum_nights")}}'
+
+dbt show --inline "{{ select_positive_values(ref('dim_listings_cleaned'),'minimum_nights') }}"
