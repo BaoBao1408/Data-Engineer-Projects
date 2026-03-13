@@ -5,3 +5,10 @@ dbt compile --inline 'select_positive_values("dim_listings_cleaned", "minimum_ni
 dbt compile --inline '{{select_positive_values("dim_listings_cleaned", "minimum_nights")}}'
 
 dbt show --inline "{{ select_positive_values(ref('dim_listings_cleaned'),'minimum_nights') }}"
+
+dbt compile --inline "{{ no_empty_strings(ref('dim_listings_cleaned')) }}"
+
+
+dbt compile --inline "SELECT * FROM {{ ref('dim_listings_cleaned') }} WHERE {{ no_empty_strings(ref('dim_listings_cleaned')) }}"
+
+dbt show --inline "SELECT * FROM {{ ref('dim_listings_cleaned') }} WHERE {{ no_empty_strings(ref('dim_listings_cleaned')) }}"
