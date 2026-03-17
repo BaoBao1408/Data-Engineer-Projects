@@ -1,0 +1,19 @@
+Query: Q04 - Find order with highest total_amount
+Phase: Baseline
+Purpose:
+- Identify the single order with the highest total_amount value
+Execution Summary:
+- Scan Type       : Parallel Sequential Scan on orders
+- Workers Used    : 2 parallel workers
+- Sort Method     : Top-N Heapsort
+- Sort Key        : total_amount DESC
+- Rows Scanned    : ~3.8 million orders
+- Limit Applied   : 1
+- Memory Usage    : ~25 KB per worker
+- Execution Time  : 548.078 ms
+Analysis:
+- The query performs a full scan of the orders table to evaluate total_amount values
+- Parallel execution is used to speed up scanning across multiple workers
+- Top-N heapsort efficiently keeps only the highest value due to LIMIT 1
+- Sorting is done in memory and does not spill to disk
+- Despite LIMIT 1, a full table scan is still required without a supporting index

@@ -1,0 +1,24 @@
+Query: Q03 - Filter data in order_item by product_id
+Phase: Optimized (Monthly Partitioned Order Item + Index)
+Purpose:
+- Retrieve order_item records filtered by a range of product_id values
+- Evaluate the effectiveness of partitioning and indexing on selective filters
+Execution Summary:
+- Partition Strategy : Range partitioning by order_date (monthly)
+- Append Strategy    : Append across relevant monthly partitions
+- Partitions Scanned : order_item_2025_08, order_item_2025_09, order_item_2025_10
+- Scan Type          : Bitmap Heap Scan on each partition
+- Index Used         : Bitmap Index Scan on product_id (per-partition local index)
+- Index Condition   : product_id > 50 AND product_id <= 100
+- Rows Returned      : ~631,772 rows
+- Heap Blocks Read   : ~44–46K blocks per partition
+- Planning Time      : 0.227 ms
+- Execution Time     : 2,174.110 ms
+Analysis:
+- Monthly partitioning enables the planner to scan only the relevant partitions
+- Bitmap index scans efficiently identify matching product_id ranges within each partition
+- Bitmap heap scans retrieve only the necessary heap blocks, reducing random I/O
+- The Append node combines results from multiple monthly partitions
+- Although multiple partitions are scanned, index usage significantly reduces scan cost
+- Overall performance is substantially improved compared to a full table sequential scan
+- This plan demonstrates effective use of local indexes on partitioned tables for range predicates

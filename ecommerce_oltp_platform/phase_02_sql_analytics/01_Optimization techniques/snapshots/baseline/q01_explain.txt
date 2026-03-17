@@ -1,0 +1,16 @@
+Query: Q01 - Total revenue per month
+Phase: Baseline
+
+Execution Summary:
+- Scan Type       : Sequential Scan on orders
+- Rows Scanned    : ~3.8 million
+- Aggregation     : GroupAggregate
+- Sort Method     : External merge sort
+- Disk Usage      : ~93 MB
+- Execution Time  : 7255.583 ms
+
+Analysis:
+- Full table scan on orders table
+- Aggregation requires sorting all rows
+- Sort spilled to disk due to memory limit
+- No partition pruning or index usage

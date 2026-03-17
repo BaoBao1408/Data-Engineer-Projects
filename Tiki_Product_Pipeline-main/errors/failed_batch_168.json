@@ -1,0 +1,107 @@
+[
+  {
+    "product_id": "157147696",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:18.070347"
+  },
+  {
+    "product_id": "130857457",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:18.072567"
+  },
+  {
+    "product_id": "103886721",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:18.091623"
+  },
+  {
+    "product_id": "119989685",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:18.102715"
+  },
+  {
+    "product_id": "119989889",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:18.114222"
+  },
+  {
+    "product_id": "119989725",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:18.126349"
+  },
+  {
+    "product_id": "117975225",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:18.136940"
+  },
+  {
+    "product_id": "222604460",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:18.150957"
+  },
+  {
+    "product_id": "106053047",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 429",
+    "time": "2025-12-16T20:13:18.166243"
+  },
+  {
+    "product_id": "261978845",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T20:13:18.178771"
+  },
+  {
+    "product_id": "191123281",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T20:13:18.193314"
+  },
+  {
+    "product_id": "261072979",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T20:13:18.203809"
+  },
+  {
+    "product_id": "42496586",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T20:13:18.217496"
+  },
+  {
+    "product_id": "52649564",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T20:13:18.231783"
+  },
+  {
+    "product_id": "87557157",
+    "batch": 168,
+    "stage": "fetch",
+    "error": "HTTP 404",
+    "time": "2025-12-16T20:13:18.247462"
+  }
+]

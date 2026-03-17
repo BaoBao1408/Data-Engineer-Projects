@@ -1,0 +1,23 @@
+[project]
+name = "ecommerce-oltp-generator"
+version = "0.1.0"
+description = "Synthetic e-commerce OLTP data generator"
+authors = [
+    {name = "QuocBao"}
+]
+readme = "README.md"
+requires-python = "^3.12"
+dependencies = [
+    "faker (>=40.1.2,<41.0.0)",
+    "sqlalchemy (>=2.0.45,<3.0.0)",
+    "psycopg2-binary (>=2.9.11,<3.0.0)",
+    "tqdm (>=4.67.1,<5.0.0)",
+    "python-dotenv (>=1.2.1,<2.0.0)"
+]
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

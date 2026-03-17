@@ -1,0 +1,22 @@
+Query: Q02 - Orders filtered by seller and date
+Phase: Baseline
+
+Purpose:
+- Orders and filtered total revenue per seller aggregated by month to evaluate seller performance
+
+Execution Summary:
+- Scan Type       : Parallel Sequential Scan on orders
+- Join Type       : Hash Join (orders → seller)
+- Workers Used    : 2 parallel workers
+- Rows Scanned    : ~3.8 million orders
+- Aggregation     : Parallel GroupAggregate (seller_name, month)
+- Sort Method     : External merge sort
+- Disk Usage      : ~60–65 MB per worker
+- Execution Time  : 5216.262 ms
+
+Analysis:
+- The query performs a full scan of the orders table despite parallel execution
+- Hash join with the seller table is efficient due to its small size (189 rows)
+- Aggregation by seller and month generates a large intermediate dataset
+- Sorting is required before final aggregation and spills to disk on all workers
+- Disk-based sort is the primary performance bottleneck for this query

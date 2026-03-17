@@ -1,0 +1,26 @@
+Query: Q02 - Revenue by Seller per Month
+Phase: Optimized (Monthly Partitioned Orders)
+Purpose:
+- Calculate monthly revenue aggregated by seller
+- Evaluate the impact of monthly partitioning on seller-based analytical queries
+Execution Summary:
+- Partition Strategy : Range partitioning by order_date (monthly)
+- Scan Type          : Parallel Sequential Scan on monthly partitions
+- Partitions Scanned : orders_2025_08, orders_2025_09, orders_2025_10
+- Append Strategy    : Parallel Append
+- Join Type          : Hash Join (orders → seller)
+- Workers Used       : 2 parallel workers
+- Rows Scanned       : ~1.27 million rows per worker (partitioned scope)
+- Aggregation        : Parallel HashAggregate followed by Finalize GroupAggregate
+- Group Key          : seller_name, date_trunc('month', order_date)
+- Sort Method        : In-memory quicksort
+- Memory Usage       : ~47–92 KB per worker (sorting), ~900–1040 KB (aggregation)
+- Execution Time     : 1,144.304 ms
+Analysis:
+- Monthly range partitioning limits scans to only relevant order partitions
+- Parallel Append efficiently combines data from multiple monthly partitions
+- Hash join with the seller dimension table incurs minimal overhead due to small table size
+- Aggregation is executed in parallel at the seller and month level
+- All sorting operations are performed fully in memory without disk spill
+- Compared to the baseline full table scan, execution time is significantly reduced
+- The optimized plan demonstrates effective partition pruning and improved scalability

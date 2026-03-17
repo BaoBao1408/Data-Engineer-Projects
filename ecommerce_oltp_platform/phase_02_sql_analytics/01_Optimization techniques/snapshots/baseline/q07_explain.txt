@@ -1,0 +1,22 @@
+Query: Q07 - Revenue per Product per Month
+Phase: Baseline
+Purpose:
+- Calculate monthly revenue for each product across all orders
+Execution Summary:
+- Scan Type       : Parallel Sequential Scan on orders and order_item
+- Join Type       : Parallel Hash Join (orders → order_item) followed by Hash Join (product)
+- Workers Used    : 2 parallel workers
+- Rows Scanned    : ~4.4 million order_item rows per worker
+- Aggregation     : Parallel GroupAggregate (group by month, product_id)
+- Sort Strategy   : Incremental Sort
+- Sort Key        : EXTRACT(month FROM order_date), SUM(subtotal) DESC
+- Sort Method     : External merge sort for intermediate steps, in-memory quicksort for final steps
+- Disk Usage      : ~240–246 MB per worker (external merge sort)
+- Execution Time  : 14,064.359 ms
+Analysis:
+- The query performs full parallel scans on both orders and order_item tables
+- A large hash join result set is generated before aggregation
+- Aggregation is performed at the product and month level, producing a high number of groups
+- External merge sort is required due to insufficient memory, causing significant disk I/O
+- Incremental sort optimizes final ordering but does not eliminate earlier disk-based sorting
+- Overall performance is dominated by join volume, aggregation cost, and disk-based sorting

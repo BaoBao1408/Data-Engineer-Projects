@@ -1,0 +1,61 @@
+[33m3943af8[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Delete glamira/glamira_project/pipelines/extract directory
+[33mf2aa0f5[m Delete Glamira - User Behavior/glamira_project directory
+[33m990c06c[m add path
+[33m88bde80[m rename source
+[33m0a49b1d[m source code
+[33m2907969[m update config
+[33m83f6177[m update jinja, macro, advanced testing
+[33m66f781e[m update simple test
+[33m3aa6e21[m update source files
+[33m944b681[m dbt_project
+[33m944ad61[m Create README.md
+[33m31da49b[m update README
+[33m4898f0a[m Update Function, View, Proceduces, Call Reports
+[33m40dc61d[m Update performance_comparison.md
+[33ma2cdf86[m Docs Update
+[33mec57637[m Update README.md
+[33m496cb05[m Update README.md
+[33m5ce240a[m phase02.02(MakingDynamicReports)
+[33ma7b5da3[m uptoPhase02
+[33md6d8e1a[m ecommerce_oltp_platform_generate
+[33mad8ea71[m 1
+[33m0a8f67d[m Tiki_Pipeline_Ver2
+[33m7ffc742[m extract description.py
+[33m90c4fbe[m Updated Try Except, Folder Connection, Data Source
+[33mf8eeaed[m 5
+[33mbc2d874[m modified
+[33m2ca6fbb[m Update project notes
+[33m6eeb270[m Update project notes
+[33mb782d53[m Track crawl success & error summary logs
+[33m7f557b9[m 5
+[33m365e962[m 5
+[33m648d682[m Add PostgreSQL loading pipeline for crawl data
+[33m9a783c6[m Remove output data from git tracking
+[33m09b7325[m 5
+[33mfc7ace5[m Merge remote-tracking branch 'origin/main'
+[33mf1e2255[m 1
+[33m833b352[m 1
+[33m0ca7f4e[m 1
+[33m5814000[m 5
+[33m9c435fa[m 5
+[33m734de4c[m 5
+[33md41d334[m 5
+[33m90863cd[m 5
+[33m00f2c4d[m 5
+[33m66f7ed4[m 5
+[33m2b7a6be[m 1
+[33ma1f2d07[m 5
+[33m51ed9d3[m 5
+[33mc9ae12d[m 5
+[33m5a39cd1[m 5
+[33m3946bd5[m 5
+[33m863d4e6[m Merge branch 'main' of https://github.com/BaoBao1408/Data-Engineer-Projects
+[33mceca896[m 2
+[33mb314bed[m Update .gitignore
+[33m15ee55b[m 1
+[33m3581db6[m Clean tracked files and apply .gitignore
+[33m3ded502[m 3
+[33m7c6bac7[m 2
+[33me7c40df[m 1
+[33m4f7969b[m 1
+[33mfbc77da[m Initial commit

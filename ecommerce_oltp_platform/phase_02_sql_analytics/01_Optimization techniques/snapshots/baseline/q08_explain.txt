@@ -1,0 +1,22 @@
+Query: Q08 - Products Sold per Seller
+Phase: Baseline
+Purpose:
+- Calculate the total quantity of products sold by each seller
+Execution Summary:
+- Scan Type       : Parallel Sequential Scan on orders and order_item
+- Join Type       : Parallel Hash Join (order_item → orders → seller)
+- Workers Used    : 2 parallel workers
+- Rows Scanned    : ~4.4 million order_item rows per worker
+- Aggregation     : Parallel HashAggregate followed by Finalize GroupAggregate
+- Group Key       : seller_id
+- Sort Key        : SUM(order_item.quantity) DESC
+- Sort Method     : In-memory quicksort
+- Memory Usage    : ~35 KB per worker (sorting), ~64 KB per worker (aggregation)
+- Execution Time  : 5,389.716 ms
+Analysis:
+- The query performs full parallel scans on large fact tables (orders and order_item)
+- Hash joins efficiently combine order_item with orders and seller tables
+- Aggregation is executed in parallel at the seller level, producing a small result set
+- Final sorting by total quantity sold is inexpensive and remains fully in memory
+- Overall execution time is dominated by join and aggregation costs rather than sorting
+- The query is an appropriate baseline candidate for optimization using date filters or partition pruning

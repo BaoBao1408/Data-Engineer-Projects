@@ -1,0 +1,25 @@
+#enviroment
+.env
+.venv/
+
+#pycache
+__pycache__/
+*.pyc
+*.pyo
+
+# vscode
+.vscode/
+
+#raw data 
+data/raw/*
+
+#processed data
+data/processed/*.csv
+data/processed/*.parquet
+data/processed/*.json
+
+# checkpoints
+checkpoint.txt
+
+# big binary
+*.BIN

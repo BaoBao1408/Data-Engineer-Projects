@@ -1,0 +1,17 @@
+[project]
+name = "glamira-project"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiofiles>=25.1.0",
+    "aiohttp>=3.13.3",
+    "beautifulsoup4>=4.14.3",
+    "ip2location>=8.11.0",
+    "pandas>=3.0.1",
+    "pymongo>=4.16.0",
+    "python-dotenv>=1.2.2",
+    "requests>=2.32.5",
+    "tqdm>=4.67.3",
+]
