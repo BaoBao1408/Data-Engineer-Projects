@@ -20,9 +20,9 @@ def connect_mongo():
 
     client = MongoClient(
         MONGO_URI,
-        serverSelectionTimeoutMS=60000,
-        socketTimeoutMS=60000,
-        connectTimeoutMS=60000
+        serverSelectionTimeoutMS=120000,
+        socketTimeoutMS=120000,
+        connectTimeoutMS=120000
     )
 
     db = client[DB_NAME]

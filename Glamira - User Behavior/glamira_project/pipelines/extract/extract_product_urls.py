@@ -1,14 +1,20 @@
-from mongo_connection import connect_mongo
-from urllib.parse import urlparse
-import csv
-import time
+import logging
+import json
 import os
+import time
+from urllib.parse import urlparse
+
 from tqdm import tqdm
+from config.mongo_connection import connect_mongo
 
 
-db = connect_mongo()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s | %(levelname)s | %(message)s"
+)
 
-event_types = [
+
+EVENTS = [
     "view_product_detail",
     "select_product_option",
     "select_product_option_quality",
@@ -17,151 +23,148 @@ event_types = [
     "product_detail_recommendation_noticed"
 ]
 
-OUTPUT_FILE = "data/raw/product_urls.csv"
-CHECKPOINT_FILE = "data/raw/processing_id.txt"
+SPECIAL_EVENT = "product_view_all_recommend_clicked"
+
+OUTPUT_FILE = "data/raw/product_urls.jsonl"
+CHECKPOINT_FILE = "data/raw/checkpoint.txt"
 
 os.makedirs("data/raw", exist_ok=True)
 
-seen_products = set()
 
-processed = 0
-saved = 0
-start = time.time()
+# ------------------------------------------------
+# checkpoint
+# ------------------------------------------------
 
-# ----------------------------
-# load checkpoint
-# ----------------------------
+def load_checkpoint():
 
-last_product_id = None
-resume_processed = 0
+    if os.path.exists(CHECKPOINT_FILE):
 
-if os.path.exists(CHECKPOINT_FILE):
+        with open(CHECKPOINT_FILE) as f:
+            return f.read().strip()
 
-    with open(CHECKPOINT_FILE) as f:
+    return None
 
-        line = f.read().strip()
 
-        if line:
+def save_checkpoint(_id):
 
-            parts = line.split(",")
+    with open(CHECKPOINT_FILE, "w") as f:
+        f.write(str(_id))
 
-            if len(parts) == 2:
-                last_product_id = int(parts[0])
-                resume_processed = int(parts[1])
 
-print("Resume product_id:", last_product_id)
-print("Resume processed:", resume_processed)
+# ------------------------------------------------
+# url normalize
+# ------------------------------------------------
 
-# ----------------------------
-# total records
-# ----------------------------
+def normalize_url(url):
 
-total_records = db.glamira_raw.count_documents(
-    {"collection": {"$in": event_types}}
-)
+    try:
 
-print("Total events:", total_records)
+        parsed = urlparse(url)
 
-# ----------------------------
-# cursor
-# ----------------------------
-
-cursor = db.glamira_raw.find(
-    {
-        "collection": {"$in": event_types},
-        "current_url": {"$regex": "glamira-.*\\.html"}
-    },
-    {
-        "current_url": 1,
-        "product_id": 1,
-        "viewing_product_id": 1
-    },
-    batch_size=10000,
-    no_cursor_timeout=True
-)
-
-# ----------------------------
-# progress bar
-# ----------------------------
-
-pbar = tqdm(total=total_records, initial=resume_processed)
-
-# ----------------------------
-# open files
-# ----------------------------
-
-with open(OUTPUT_FILE, "a", newline="", encoding="utf8") as csv_file, \
-     open(CHECKPOINT_FILE, "w") as checkpoint:
-
-    writer = csv.writer(csv_file)
-
-    for doc in cursor:
-
-        processed += 1
-        pbar.update(1)
-
-        url = doc.get("current_url")
-
-        product_id = doc.get("product_id") or doc.get("viewing_product_id")
-
-        if not url or not product_id:
-            continue
-
-        if last_product_id and product_id <= last_product_id:
-            continue
-
-        if product_id in seen_products:
-            continue
-
-        try:
-            parsed = urlparse(url)
-        except:
-            continue
-
-        host = parsed.netloc.lower()
-
-        if "glamira." not in host:
-            continue
-
-        if host.startswith(("stage.", "dev.", "test.")):
-            continue
+        if "glamira." not in parsed.netloc:
+            return None
 
         path = parsed.path.lower()
 
         if not path.endswith(".html"):
-            continue
+            # print(url)
+            return None
 
-        base_url = f"{parsed.scheme}://{host}{path}"
+        return f"{parsed.scheme}://{parsed.netloc}{path}"
 
-        seen_products.add(product_id)
+    except Exception:
 
-        writer.writerow([product_id, base_url])
+        return None
 
-        saved += 1
 
-        # flush csv
-        if saved % 100 == 0:
-            csv_file.flush()
+# ------------------------------------------------
+# main pipeline
+# ------------------------------------------------
 
-        # update checkpoint
-        if processed % 1000 == 0:
+def run():
 
-            checkpoint.seek(0)
-            checkpoint.write(f"{product_id},{processed}")
-            checkpoint.truncate()
-            checkpoint.flush()
+    db = connect_mongo()
 
-        # log speed
-        if processed % 50000 == 0:
+    collection = db["glamira_raw"]
 
-            elapsed = round(time.time() - start, 1)
+    resume_id = load_checkpoint()
 
-            print(
-                f"\nProcessed: {processed:,} | Products: {saved:,} | Time: {elapsed}s"
-            )
+    logging.info(f"Resume from _id: {resume_id}")
 
-pbar.close()
+    query = {
+        "collection": {"$in": EVENTS + [SPECIAL_EVENT]}
+    }
 
-print("\nFinished")
-print("Total processed:", processed)
-print("Unique products:", saved)
+    if resume_id:
+
+        query["_id"] = {"$gt": resume_id}
+
+    # get total for progress bar
+    total_docs = collection.count_documents(query)
+
+    logging.info(f"Total documents to scan: {total_docs:,}")
+
+    cursor = collection.find(
+        query,
+        {
+            "_id": 1,
+            "product_id": 1,
+            "viewing_product_id": 1,
+            "current_url": 1,
+            "referrer_url": 1
+        },
+        batch_size=10000,
+        no_cursor_timeout=True
+    )
+
+    seen_products = set()
+
+    processed = 0
+    saved = 0
+
+    start = time.time()
+
+    with open(OUTPUT_FILE, "a", encoding="utf8") as f:
+
+        for doc in tqdm(cursor, total=total_docs, desc="Scanning events"):
+
+            processed += 1
+
+            product_id = doc.get("product_id") or doc.get("viewing_product_id")
+
+            url = doc.get("current_url") or doc.get("referrer_url")
+
+            if not product_id or not url:
+                continue
+
+            if product_id in seen_products:
+                continue
+
+            normalized = normalize_url(url)
+
+            if not normalized:
+                continue
+
+            seen_products.add(product_id)
+
+            record = {
+                "product_id": product_id,
+                "url": normalized
+            }
+
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+            saved += 1
+
+            save_checkpoint(doc["_id"])
+
+    elapsed = round(time.time() - start, 1)
+
+    logging.info("Finished")
+    logging.info(f"Total processed: {processed:,}")
+    logging.info(f"Unique products saved: {saved:,}")
+    logging.info(f"Elapsed time: {elapsed}s")
+
+
+if __name__ == "__main__":
+    run()
