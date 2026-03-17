@@ -31,7 +31,7 @@ def process_ip_locations(bin_file, output_location, db):
     cursor = collection.aggregate(
         pipeline,
         allowDiskUse=True,
-        batchSize=500
+        batchSize=1000
     )
 
     location = IP2Location.IP2Location(bin_file)
@@ -49,13 +49,15 @@ def process_ip_locations(bin_file, output_location, db):
         if start == 0:
             writer.writeheader()
 
-        total_ips = collection.count_documents({"ip": {"$exists": True}})
+        for i, doc in enumerate(tqdm(cursor, desc="Processing IPs")):
 
-        for i, doc in enumerate(tqdm(cursor, total=total_ips)):
+            if i < start:
+                continue
 
             ip = doc["_id"]
 
             try:
+
                 record = location.get_all(ip)
 
                 writer.writerow({
@@ -66,13 +68,16 @@ def process_ip_locations(bin_file, output_location, db):
                 })
 
             except Exception as e:
+
                 print(f"Error with {ip}: {e}")
 
+            if i % 500 == 0:
                 save_checkpoint(i)
 
+        save_checkpoint(i)
+
     print("Finished")
-
-
+    
 if __name__ == "__main__":
 
     db = connect_mongo()
