@@ -1,34 +1,39 @@
 import os
+from pathlib import Path
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
 
-# load environment variables
-load_dotenv()
+# locate .env inside config folder
+BASE_DIR = Path(__file__).resolve().parent
+ENV_PATH = BASE_DIR / ".env"
 
-MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME")
+load_dotenv(ENV_PATH)
 
 
 def connect_mongo():
 
-    if not MONGO_URI:
+    mongo_uri = os.getenv("MONGO_URI")
+    db_name = os.getenv("DB_NAME")
+
+    if not mongo_uri:
         raise ValueError("MONGO_URI not found in .env")
 
-    if not DB_NAME:
+    if not db_name:
         raise ValueError("DB_NAME not found in .env")
 
     client = MongoClient(
-        MONGO_URI,
+        mongo_uri,
+        maxPoolSize=50,
+        minPoolSize=5,
         serverSelectionTimeoutMS=120000,
         socketTimeoutMS=120000,
         connectTimeoutMS=120000
     )
 
-    db = client[DB_NAME]
+    db = client[db_name]
 
-    return db
-
+    return client, db
 
 if __name__ == "__main__":
 

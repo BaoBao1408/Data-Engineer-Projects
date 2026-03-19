@@ -14,9 +14,15 @@ __pycache__/
 data/raw/*
 
 #processed data
-data/processed/*.csv
-data/processed/*.parquet
-data/processed/*.json
+data/processed_ip_location/*.csv
+data/processed_ip_location/*.parquet
+data/processed_ip_location/*.json
+
+
+#price_collection
+data/price_collection/*.csv
+data/price_collection/*.parquet
+data/price_collection/*.json
 
 # checkpoints
 checkpoint.txt
