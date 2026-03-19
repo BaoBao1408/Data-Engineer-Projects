@@ -10,27 +10,21 @@ from pymongo import MongoClient
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm
 
-
+from config.mongo_connection import connect_mongo
 # ===============================
 # ENV + MONGO
 # ===============================
 
-load_dotenv()
+client, db = connect_mongo()
 
-MONGO_URI = os.getenv("MONGO_URI")
-DB_NAME = os.getenv("DB_NAME")
-
-client = MongoClient(MONGO_URI)
-db = client[DB_NAME]
-
-collection = db["products"]
+collection = db["products_raw"]
 
 
 # ===============================
 # CONFIG
 # ===============================
 
-INPUT_FILE = "data/raw/product_urls_test.jsonl"
+INPUT_FILE = "data/raw/product_urls.jsonl"
 
 CONCURRENT_REQUESTS = 5
 MAX_RETRIES = 5

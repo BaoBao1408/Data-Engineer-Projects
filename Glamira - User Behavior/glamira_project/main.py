@@ -1,47 +1,78 @@
 import argparse
-from src.data.process_ip_locations import process_ip_locations
-from etl.extract.extract_urls import product_map, save_urls
-from src.data.product_collection import collect_product
-from config.connect import connect
+
+from scripts.run_event_pipeline import main as run_event_pipeline
+from scripts.run_scraper import main as run_scraper
+from scripts.run_ip_enrichment import main as run_ip_enrichment
+
 
 def parse_args():
+
     parser = argparse.ArgumentParser(
-        description="Argparse for Project"
+        description="Glamira Data Pipeline"
     )
 
     parser.add_argument(
-        "--bin-file",
-        default="IP-COUNTRY-REGION-CITY.BIN",
-        #required=True,
-        help="Path to IP2Location BIN file"
+        "--events",
+        action="store_true",
+        help="Run event pipeline"
     )
+
     parser.add_argument(
-        "--output-location-path",
-        default="data/raw/ip_locations.csv",
-        help="Path to output CSV location file"
+        "--scraper",
+        action="store_true",
+        help="Run product scraper"
     )
+
     parser.add_argument(
-        "--output-product-path",
-        default="data/raw/product_info.jsonl",
-        help="Path to output CSV location file"
+        "--ip",
+        action="store_true",
+        help="Run IP enrichment"
     )
+
     parser.add_argument(
-        "--urls-path",
-        default="data/raw/urls.jsonl",
-        help="Path to output Json urls file"
+        "--all",
+        action="store_true",
+        help="Run full pipeline"
     )
-    parser.add_argument(
-        "--failed-product-path",
-        default="data/raw/error_403_id.txt",
-        help="Path to list failed crawl product id"
-    )
+
     return parser.parse_args()
 
+
+def main():
+
+    args = parse_args()
+
+    print("\n==== Glamira Data Pipeline ====\n")
+
+    if args.all:
+
+        print("Step 1: Extract product URLs from events")
+        run_event_pipeline()
+
+        print("\nStep 2: Crawl product pages")
+        run_scraper()
+
+        print("\nStep 3: IP enrichment")
+        run_ip_enrichment()
+
+        print("\nPipeline completed\n")
+
+        return
+
+    if args.events:
+        print("Running event pipeline")
+        run_event_pipeline()
+
+    if args.scraper:
+        print("Running scraper")
+        run_scraper()
+
+    if args.ip:
+        print("Running IP enrichment")
+        run_ip_enrichment()
+
+    print("\nFinished\n")
+
+
 if __name__ == "__main__":
-    arg = parse_args()
-    # client = connect()
-    # db = client["countly"]
-    #process_ip_locations(arg.bin_file, arg.output_location_csv, db)
-    # products = product_map(db)
-    # save_urls(products, arg.urls_path)
-    collect_product(arg.urls_path, arg.output_product_path, arg.failed_product_path)
+    main()

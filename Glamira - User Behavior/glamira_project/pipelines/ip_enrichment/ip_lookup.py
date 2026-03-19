@@ -80,10 +80,10 @@ def process_ip_locations(bin_file, output_location, db):
     
 if __name__ == "__main__":
 
-    db = connect_mongo()
+    client, db = connect_mongo()
 
     process_ip_locations(
-        "source/ip_geolocation/IP-COUNTRY-REGION-CITY.BIN",
+        "pipelines/ip_enrichment/ip_geolocation/IP-COUNTRY-REGION-CITY.BIN",
         "data/processed_ip_location/ip_locations.csv",
         db
     )

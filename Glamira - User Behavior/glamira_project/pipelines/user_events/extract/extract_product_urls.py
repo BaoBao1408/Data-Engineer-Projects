@@ -83,7 +83,7 @@ def normalize_url(url):
 
 def run():
 
-    db = connect_mongo()
+    client, db = connect_mongo()
 
     collection = db["glamira_raw"]
 
