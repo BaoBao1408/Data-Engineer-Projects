@@ -19,7 +19,86 @@ The pipeline follows a layered architecture commonly used in data engineering sy
 
 ```
 Raw Data → Extraction → Enrichment → Storage
+
 ```
+
+## Architecture Diagram
+
+```
+                          ┌───────────────────────────────┐
+                          │        User Event Logs         │
+                          │   (clicks, views, interactions)│
+                          └───────────────┬───────────────┘
+                                          │
+                                          ▼
+                     ┌─────────────────────────────────────┐
+                     │      Event Processing Pipeline       │
+                     │  extract_product_urls.py             │
+                     │                                      │
+                     │ Extract product URLs from events     │
+                     └───────────────┬─────────────────────┘
+                                     │
+                                     ▼
+                        ┌──────────────────────────┐
+                        │   product_urls.json      │
+                        │      Raw URL Dataset     │
+                        └─────────────┬────────────┘
+                                      │
+                                      ▼
+                   ┌──────────────────────────────────────┐
+                   │        Async Product Scraper          │
+                   │           product_ex.py               │
+                   │                                      │
+                   │ AsyncIO + curl_cffi crawler          │
+                   │ • Concurrent requests                │
+                   │ • Retry handling                     │
+                   │ • Failure logging                    │
+                   └───────────────┬──────────────────────┘
+                                   │
+                                   ▼
+                      ┌─────────────────────────────┐
+                      │        MongoDB Storage      │
+                      │       products_raw          │
+                      │                             │
+                      │ Structured product dataset  │
+                      └───────────────┬─────────────┘
+                                      │
+                                      ▼
+                   ┌─────────────────────────────────────┐
+                   │        IP Enrichment Pipeline        │
+                   │          ip_lookup.py                │
+                   │                                     │
+                   │ Enrich user IP with location data   │
+                   │ using IP2Location database          │
+                   └───────────────┬─────────────────────┘
+                                   │
+                                   ▼
+                      ┌────────────────────────────┐
+                      │   Processed Location Data  │
+                      │    ip_locations.csv        │
+                      └────────────────────────────┘
+```
+
+---
+
+### Pipeline Layers
+
+```
+Raw Data Layer
+    │
+    ▼
+Extraction Layer
+    │
+    ▼
+Processing / Crawling Layer
+    │
+    ▼
+Storage Layer (MongoDB)
+    │
+    ▼
+Enrichment Layer
+```
+
 
 ### Data Flow
 
