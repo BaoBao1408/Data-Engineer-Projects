@@ -1,68 +1,76 @@
-Glamira Data Engineering Pipeline
+# Glamira Data Engineering Pipeline
 
-A production-style data pipeline for extracting, enriching, and storing product interaction data from Glamira event logs.
+A production-style **Data Engineering pipeline** for extracting, enriching, and storing product interaction data from Glamira event logs.
 
-This project simulates a real-world Data Engineering workflow, including event processing, asynchronous web scraping, IP geolocation enrichment, and structured data storage in MongoDB.
+This project simulates a real-world **data engineering workflow**, including:
 
-The system processes user interaction events, extracts product URLs, crawls product information from the Glamira website, and enriches user IP addresses with geographic location data.
+* Event processing
+* Asynchronous web scraping
+* IP geolocation enrichment
+* Structured storage in MongoDB
 
-Pipeline Architecture
-                    MongoDB (glamira_raw)
-                          │
-                          ▼
-              Event Processing Pipeline
-         Extract product URLs from user events
-                          │
-                          ▼
-                product_urls.jsonl
-                          │
-                          ▼
-                Product Scraper Pipeline
-         Crawl product information from Glamira
-                          │
-                          ▼
-              MongoDB (collection_product)
-                          │
-                          ▼
-               IP Enrichment Pipeline
-          Enrich user IPs using IP2Location
-                          │
-                          ▼
-                    ip_locations.csv
+The pipeline processes user interaction events, extracts product URLs, crawls product information from the Glamira website, and enriches user IP addresses with geographic location data.
 
-This architecture represents a typical layered data pipeline:
+---
 
+# Pipeline Architecture
+
+The pipeline follows a layered architecture commonly used in data engineering systems.
+
+```
 Raw Data → Extraction → Enrichment → Storage
-Project Structure
+```
+
+### Data Flow
+
+```
+User Events
+   │
+   ▼
+Extract Product URLs
+   │
+   ▼
+product_urls.json
+   │
+   ▼
+Async Product Scraper
+   │
+   ▼
+MongoDB (products_raw)
+   │
+   ▼
+IP Enrichment
+   │
+   ▼
+processed_ip_location
+```
+
+---
+
+# Project Structure
+
+```
 glamira_project
+│
+├── config
+│   ├── mongo_connection.py
+│   └── .env
 │
 ├── pipelines
 │   ├── user_events
-│   │   └── extract
-│   │       └── extract_product_urls.py
+│   │   └── extract_product_urls.py
 │   │
 │   ├── product_scraper
-│   │   └── extract
-│   │       ├── product_extractor.py
-│   │       └── product_ex.py
+│   │   ├── product_ex.py
+│   │   └── run_scraper.py
 │   │
 │   └── ip_enrichment
 │       ├── ip_lookup.py
-│       └── ip_geolocation
-│           └── IP-COUNTRY-REGION-CITY.BIN
-│
-├── scripts
-│   ├── run_event_pipeline.py
-│   ├── run_scraper.py
-│   └── run_ip_enrichment.py
-│
-├── config
-│   └── mongo_connection.py
+│       └── run_ip_enrichment.py
 │
 ├── data
 │   ├── raw
-│   │   ├── product_urls.jsonl
-│   │   └── checkpoint.txt
+│   │   └── product_urls.json
 │   │
 │   ├── product_extract
 │   │   ├── processed_id.txt
@@ -71,208 +79,183 @@ glamira_project
 │   └── processed_ip_location
 │       └── ip_locations.csv
 │
-├── main.py
-└── README.md
+├── source
+│   ├── product
+│   │   └── product_ex.py
+│   │
+│   └── ip_geolocation
+│       └── ip_lookup.py
+│
+├── notebooks
+├── docs
+└── main.py
+```
 
-The project follows a modular pipeline structure to simulate real production data workflows.
+---
 
-Data Storage (MongoDB)
+# Features
 
-Data is stored in MongoDB using the following structure:
+### Async Web Scraping
 
-glamira_dataset
-   └── glamira
-        ├── glamira_raw
-        └── collection_product
-glamira_raw
+The scraper uses **AsyncIO + curl_cffi** for high-performance crawling.
 
-Contains raw user interaction events including:
+Features include:
 
-product views
+* Concurrent asynchronous requests
+* Retry handling
+* Failure logging
+* Checkpoint recovery
 
-recommendation interactions
+### Data Enrichment
 
-add-to-cart events
+User IP addresses are enriched with geolocation data using the **IP2Location database**.
 
-user IP addresses
+### Data Storage
 
-page navigation data
+Processed product data is stored in **MongoDB collections** for further analytics and data processing.
 
-Example fields:
+---
 
-{
-  "collection": "view_product_detail",
-  "product_id": "104178",
-  "current_url": "https://www.glamira.com/glamira-ring-jaselle.html",
-  "ip": "192.168.1.1"
-}
-collection_product
+# Installation
 
-Contains scraped product data extracted from Glamira product pages.
+## 1. Clone repository
+
+```
+git clone https://github.com/your_repo/glamira_data_pipeline.git
+cd glamira_project
+```
+
+## 2. Create virtual environment
+
+Linux / Mac:
+
+```
+python -m venv .venv
+source .venv/bin/activate
+```
+
+Windows:
+
+```
+python -m venv .venv
+.venv\Scripts\activate
+```
+
+## 3. Install dependencies
+
+```
+pip install -r requirements.txt
+```
+
+---
+
+# Environment Configuration
+
+Create a `.env` file inside the **config/** directory.
 
 Example:
 
+```
+MONGO_URI=mongodb://localhost:27017
+DB_NAME=glamira
+```
+
+---
+
+# Running the Pipeline
+
+## Step 1 — Extract product URLs from event logs
+
+```
+python pipelines/user_events/extract_product_urls.py
+```
+
+This generates:
+
+```
+data/raw/product_urls.json
+```
+
+---
+
+## Step 2 — Crawl product information
+
+```
+python source/product/product_ex.py
+```
+
+The crawler collects:
+
+* product name
+* price
+* alloy
+* size
+* product URL
+
+and stores them in **MongoDB**.
+
+---
+
+## Step 3 — Enrich IP addresses with geolocation
+
+```
+python source/ip_geolocation/ip_lookup.py
+```
+
+This step enriches user IPs with location data using **IP2Location**.
+
+---
+
+# Example MongoDB Output
+
+Collection:
+
+```
+products_raw
+```
+
+Example document:
+
+```
 {
-  "product_id": "104178",
-  "url": "https://www.glamira.com/glamira-ring-jaselle.html",
-  "react_data": {
-    "name": "Glamira Ring Jaselle",
-    "price": 899,
-    "variants": [...],
-    "materials": [...],
-    "sizes": [...]
-  }
+  "product_id": "123456",
+  "name": "Diamond Ring",
+  "price": 999,
+  "alloy": "White Gold",
+  "size": "54",
+  "url": "https://www.glamira.com/..."
 }
-Pipelines
-1. Event Processing Pipeline
+```
 
-Extracts product URLs from user interaction events stored in MongoDB.
+---
 
-Source collection:
+# Tech Stack
 
-glamira_raw
+| Component       | Technology         |
+| --------------- | ------------------ |
+| Language        | Python             |
+| Async Scraping  | AsyncIO, curl_cffi |
+| HTML Parsing    | BeautifulSoup      |
+| Database        | MongoDB            |
+| Data Enrichment | IP2Location        |
+| Environment     | Python venv        |
 
-Events processed:
+---
 
-view_product_detail
-select_product_option
-select_product_option_quality
-add_to_cart_action
-product_detail_recommendation_visible
-product_detail_recommendation_noticed
-product_view_all_recommend_clicked
+# Future Improvements
 
-Output:
+Planned enhancements for the pipeline:
 
-data/raw/product_urls.jsonl
+* Kafka-based event streaming
+* Airflow orchestration
+* Spark data processing layer
+* Data warehouse integration
 
-Run pipeline:
+---
 
-python scripts/run_event_pipeline.py
-2. Product Scraper Pipeline
+# Author
 
-Crawls Glamira product pages asynchronously and extracts structured product data.
+**Nguyen Quoc Bao**
+**baoquocnguyen1408@gmail.com**
 
-Features:
-
-asynchronous HTTP crawling
-
-retry mechanism
-
-rate limiting
-
-checkpoint resume
-
-failed request logging
-
-real-time MongoDB insertion
-
-BeautifulSoup HTML parsing
-
-extraction of React-based page data
-
-Output:
-
-MongoDB → collection_product
-
-Run pipeline:
-
-python scripts/run_scraper.py
-3. IP Enrichment Pipeline
-
-Extracts unique user IP addresses from event logs and enriches them using the IP2Location database.
-
-Source:
-
-glamira_raw
-
-Output:
-
-data/processed_ip_location/ip_locations.csv
-
-Run pipeline:
-
-python scripts/run_ip_enrichment.py
-Running the Full Pipeline
-
-To execute the entire pipeline sequentially:
-
-python main.py --all
-
-Run individual components:
-
-python main.py --events
-python main.py --scraper
-python main.py --ip
-Technologies Used
-
-Core stack used in this project:
-
-Python
-
-MongoDB
-
-AsyncIO
-
-BeautifulSoup
-
-IP2Location
-
-tqdm
-
-curl_cffi
-
-JSONL data pipelines
-
-Engineering Highlights
-
-This project demonstrates several key Data Engineering practices:
-
-modular pipeline architecture
-
-asynchronous web scraping
-
-checkpoint-based resume logic
-
-MongoDB document storage
-
-event-driven data extraction
-
-IP geolocation enrichment
-
-structured project organization
-
-The architecture mirrors real-world ETL/ELT workflows used in data platforms.
-
-Example MongoDB View
-
-MongoDB Compass visualization:
-
-glamira_dataset
-   └── glamira
-        ├── glamira_raw
-        └── collection_product
-Future Improvements
-
-Potential improvements for scaling this pipeline include:
-
-workflow orchestration with Apache Airflow
-
-streaming ingestion using Kafka
-
-transformation layer using dbt
-
-loading structured data into a data warehouse
-
-analytics dashboards (Power BI / Superset)
-
-containerization with Docker
-
-deployment on cloud infrastructure
-
-Author
-
-Nguyen Quoc Bao
-Email: baoquocnguyen1408@gmail.com
-
-Data Engineering project for practicing real-world pipeline design, event processing, and web data extraction.
+Aspiring Data Engineer

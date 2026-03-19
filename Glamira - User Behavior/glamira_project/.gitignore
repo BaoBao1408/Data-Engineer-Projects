@@ -11,18 +11,13 @@ __pycache__/
 .vscode/
 
 #raw data 
-data/raw/*
+data/
 
-#processed data
-data/processed_ip_location/*.csv
-data/processed_ip_location/*.parquet
-data/processed_ip_location/*.json
+# notebooks
+*.ipynb_checkpoints
 
-
-#price_collection
-data/price_collection/*.csv
-data/price_collection/*.parquet
-data/price_collection/*.json
+# logs
+*.log
 
 # checkpoints
 checkpoint.txt
