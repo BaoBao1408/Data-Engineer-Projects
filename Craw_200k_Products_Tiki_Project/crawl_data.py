@@ -15,14 +15,67 @@ import json
 import os
 import time
 import logging
+import re
 import random
+from bs4 import BeautifulSoup
 from aiohttp import ClientConnectorError, ServerTimeoutError
 from tqdm import tqdm
-from clean_description import description_pipeline
 
 API_TEMPLATE = "https://api.tiki.vn/product-detail/api/v1/products/{}"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+
+_PROMO_PATTERNS = [
+    r"(?i)\bđây là sản phẩm\b.*", r"(?i)\bshop\b.*", r"(?i)\bchi(ỉ|́|̣)?\s+co(́|́)?\b.*",
+    r"(?i)\btặng kèm\b.*", r"(?i)\bkhuyến mãi\b.*", r"(?i)\bcam kết\b.*",
+    r"(?i)\bmiễn phí\b.*", r"(?i)\bmiễn phí vận chuyển\b.*", r"(?i)\bliên hệ\b.*",
+    r"(?i)\bgiao hàng\b.*", r"(?i)\bthanh toán\b.*", r"(?i)http[s]?://\S+",
+    r"(?i)www\.\S+", r"(?i)\bhot\b.*", r"(?i)\bnew\b.*", r"(?i)\bbest seller\b.*",
+]
+
+def remove_marketing_sentences(text):
+    if not text:
+        return text
+    sents = re.split(r'(?<=[.!?])\s+', str(text))
+    kept = []
+    for s in sents:
+        s_stripped = s.strip()
+        if not s_stripped:
+            continue
+        skip = False
+        for pat in _PROMO_PATTERNS:
+            if re.search(pat, s_stripped):
+                skip = True
+                break
+        if not skip:
+            kept.append(s_stripped)
+    return " ".join(kept).strip()
+
+def clean_description(html_text, max_len=400):
+    if not html_text:
+        return ""
+    if isinstance(html_text, (dict, list)):
+        html_text = str(html_text)
+    soup = BeautifulSoup(html_text, "html.parser")
+    text = soup.get_text(separator=" ", strip=True)
+    text = " ".join(text.split())
+    parts = re.split(r'(?<=[.!?])\s+', text, maxsplit=2)
+    short = " ".join(parts[:2]) if parts else text
+    if len(short) > max_len:
+        short = short[:max_len].rstrip()
+        if not short.endswith((".", "!", "?")):
+            short = short.rsplit(" ", 1)[0] + "..."
+    return short
+
+def description_pipeline(html_text, max_len=400, remove_marketing=True):
+    s = clean_description(html_text, max_len=max_len)
+    if remove_marketing:
+        s = remove_marketing_sentences(s)
+    if len(s) > max_len:
+        s = s[:max_len].rstrip()
+        if not s.endswith((".", "!", "?")):
+            s = s.rsplit(" ", 1)[0] + "..."
+    return s
 
 def extract_fields(product_json):
     if not isinstance(product_json, dict):
@@ -67,10 +120,6 @@ def extract_fields(product_json):
         "description": description,
         "images": images
     }
-
-class DataFileError(Exception):
-    """Raised when there is a problem reading the input data file."""
-    pass
 
 class ProductDownloader:
     def __init__(self, ids, outdir="output", errordir="output_error", chunk_size=1000,
@@ -235,47 +284,34 @@ class ProductDownloader:
             logging.warning("Failed to aggregate failed ids: %s", e)
 
 def load_ids_from_csv(path):
-    if not os.path.exists(path):
-        raise DataFileError(f"Input file not found: {path}")
-    
     ids = []
-    encodings_to_try = ["utf-8", "utf-8-sig", "utf-16", "latin-1"]
-    last_error = None
-
-    for enc in encodings_to_try:
+    with open(path, "r", encoding="utf-8") as f:
         try:
-            with open(path, "r", encoding=enc) as f:
-                reader = csv.reader(f)
-                for row in reader:
-                    if not row:
-                        continue
-                    cell = row[0].strip()
-                    if cell.isdigit():  
+            reader = csv.reader(f)
+            for row in reader:
+                if not row:
+                    continue
+                for cell in row:
+                    cell = cell.strip()
+                    if cell and any(ch.isdigit() for ch in cell):
                         ids.append(cell)
-
-            print(f"[INFO] Loaded IDs using encoding: {enc}")
-            break  
-
-        except UnicodeDecodeError as e:
-            last_error = e
-            continue
-        except PermissionError as e:
-            raise DataFileError(f"Permission denied when reading {path}") from e 
-
-    if not ids:
-        raise ValueError("No valid IDs found in input file after trying multiple encodings.")
-
+                        break
+        except Exception:
+            f.seek(0)
+            for line in f:
+                s = line.strip()
+                if s:
+                    ids.append(s)
+    # dedupe preserve order
     seen = set()
     out = []
     for x in ids:
         if x not in seen:
             seen.add(x)
             out.append(x)
-
     return out
 
 def main():
-    
     parser = argparse.ArgumentParser()
     parser.add_argument("--ids", required=True, help="CSV or txt file with one id per line")
     parser.add_argument("--outdir", default="output", help="directory for successful outputs and processed_success.txt")
@@ -287,12 +323,8 @@ def main():
     parser.add_argument("--limit-per-host", type=int, default=10)
     parser.add_argument("--resume", action="store_true", help="resume by skipping ids that previously succeeded (processed_success.txt in outdir)")
     args = parser.parse_args()
-    try:
-        ids = load_ids_from_csv(args.ids)
-    except DataFileError as e:
-        print(f"[ERROR] {e}")
-        return
-    # ids = load_ids_from_csv(args.ids)
+
+    ids = load_ids_from_csv(args.ids)
     logging.info("Loaded %s ids from %s", len(ids), args.ids)
     downloader = ProductDownloader(ids, outdir=args.outdir, errordir=args.errordir, chunk_size=args.chunk,
                                    concurrency=args.concurrency, timeout=args.timeout, retries=args.retries,
