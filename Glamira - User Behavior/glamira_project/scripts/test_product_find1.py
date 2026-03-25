@@ -3,7 +3,7 @@ from pymongo import MongoClient
 client = MongoClient("mongodb://localhost:27017")
 db = client["glamira_raw"]
 
-product = db.products.find_one({"product_id": "110474"})
+product = db.products.find_one({"product_id": "105481"})
 
 data = product["react_data"]
 

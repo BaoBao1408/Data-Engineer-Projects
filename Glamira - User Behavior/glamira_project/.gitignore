@@ -10,8 +10,20 @@ __pycache__/
 # vscode
 .vscode/
 
-#raw data 
-data/
+# ignore pipeline outputs
+data/product_extract/*.jsonl
+data/product_extract/*.parquet
+data/product_extract/*.txt
+
+# ignore processed location files
+data/processed_ip_location/*.csv
+data/processed_ip_location/*.parquet
+data/processed_ip_location/*.json
+
+# ignore processed location files
+data/raw/*.csv
+data/raw/*.parquet
+data/raw/*.json
 
 # notebooks
 *.ipynb_checkpoints

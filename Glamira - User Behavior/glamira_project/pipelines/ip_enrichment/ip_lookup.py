@@ -23,21 +23,20 @@ def process_ip_locations(bin_file, output_location, db):
 
     collection = db["glamira_raw"]
 
-    pipeline = [
-        {"$match": {"ip": {"$exists": True}}},
-        {"$group": {"_id": "$ip"}}
-    ]
-
-    cursor = collection.aggregate(
-        pipeline,
-        allowDiskUse=True,
-        batchSize=1000
+    # 🔥 STREAMING CURSOR (KHÔNG BLOCK)
+    cursor = collection.find(
+        {"ip": {"$exists": True}},
+        {"ip": 1},
+        batch_size=1000,
+        no_cursor_timeout=True
     )
 
     location = IP2Location.IP2Location(bin_file)
 
     start = load_checkpoint()
     print(f"Resume from index {start}")
+
+    Path(output_location).parent.mkdir(parents=True, exist_ok=True)
 
     with open(output_location, "a", newline="", encoding="utf-8") as f:
 
@@ -49,15 +48,17 @@ def process_ip_locations(bin_file, output_location, db):
         if start == 0:
             writer.writeheader()
 
-        for i, doc in enumerate(tqdm(cursor, desc="Processing IPs")):
+        for i, doc in enumerate(tqdm(cursor, desc="Streaming IPs")):
 
             if i < start:
                 continue
 
-            ip = doc["_id"]
+            ip = doc.get("ip")
+
+            if not ip:
+                continue
 
             try:
-
                 record = location.get_all(ip)
 
                 writer.writerow({
@@ -68,10 +69,9 @@ def process_ip_locations(bin_file, output_location, db):
                 })
 
             except Exception as e:
-
                 print(f"Error with {ip}: {e}")
 
-            if i % 500 == 0:
+            if i % 1000 == 0:
                 save_checkpoint(i)
 
         save_checkpoint(i)
@@ -79,6 +79,8 @@ def process_ip_locations(bin_file, output_location, db):
     print("Finished")
     
 if __name__ == "__main__":
+
+    print("START SCRIPT")  # debug
 
     client, db = connect_mongo()
 
