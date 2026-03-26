@@ -23,7 +23,8 @@ data/product_extract/*.txt
 data/processed_ip_location/*.csv
 data/processed_ip_location/*.parquet
 data/processed_ip_location/*.json
-
+data/processed_ip_location/*.txt
+    
 # ignore processed location files
 data/raw/*.csv
 data/raw/*.parquet
