@@ -10,6 +10,10 @@ __pycache__/
 # vscode
 .vscode/
 
+data/export/
+*.gz
+*.jsonl
+
 # ignore pipeline outputs
 data/product_extract/*.jsonl
 data/product_extract/*.parquet

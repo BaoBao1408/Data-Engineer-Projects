@@ -6,6 +6,7 @@ from tqdm import tqdm
 
 CHECKPOINT_FILE = "data/processed_ip_location/checkpoint.txt"
 
+SEEN_FILE = "data/processed_ip_location/seen_ips.txt"
 
 def load_checkpoint():
     if Path(CHECKPOINT_FILE).exists():
@@ -18,6 +19,15 @@ def save_checkpoint(i):
     with open(CHECKPOINT_FILE, "w") as f:
         f.write(str(i))
 
+
+def load_seen():
+    if Path(SEEN_FILE).exists():
+        return set(open(SEEN_FILE).read().splitlines())
+    return set()
+
+def append_seen(ip):
+    with open(SEEN_FILE, "a") as f:
+        f.write(ip + "\n")
 
 def process_ip_locations(bin_file, output_location, db):
 
@@ -48,6 +58,8 @@ def process_ip_locations(bin_file, output_location, db):
         if start == 0:
             writer.writeheader()
 
+        seen_ips = load_seen()
+
         for i, doc in enumerate(tqdm(cursor, desc="Streaming IPs")):
 
             if i < start:
@@ -57,6 +69,12 @@ def process_ip_locations(bin_file, output_location, db):
 
             if not ip:
                 continue
+
+            if ip in seen_ips:
+                continue
+
+            seen_ips.add(ip)
+            append_seen(ip)           
 
             try:
                 record = location.get_all(ip)
@@ -86,6 +104,6 @@ if __name__ == "__main__":
 
     process_ip_locations(
         "pipelines/ip_enrichment/ip_geolocation/IP-COUNTRY-REGION-CITY.BIN",
-        "data/processed_ip_location/ip_locations.csv",
+        "data/processed_ip_location/raw_ip_location.csv",
         db
     )

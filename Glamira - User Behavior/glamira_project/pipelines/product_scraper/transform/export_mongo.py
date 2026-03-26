@@ -2,7 +2,7 @@ import json
 import gzip
 from pathlib import Path
 from pymongo import MongoClient
-
+from tqdm import tqdm
 
 # =========================
 # CONFIG
@@ -35,21 +35,21 @@ def json_safe(doc):
 # FLATTEN PRODUCT
 # =========================
 
-def flatten_product(doc):
+# def flatten_product(doc):
 
-    react = doc.get("react_data", {})
+#     react = doc.get("react_data", {})
 
-    return {
-        "product_id": doc.get("product_id"),
-        "url": doc.get("url"),
-        "name": react.get("name"),
-        "price": react.get("price"),
-        "category": react.get("category_name"),
-        "collection": react.get("collection"),
-        "gender": react.get("gender"),
-        "min_price": react.get("min_price"),
-        "max_price": react.get("max_price")
-    }
+#     return {
+#         "product_id": doc.get("product_id"),
+#         "url": doc.get("url"),
+#         "name": react.get("name"),
+#         "price": react.get("price"),
+#         "category": react.get("category_name"),
+#         "collection": react.get("collection"),
+#         "gender": react.get("gender"),
+#         "min_price": react.get("min_price"),
+#         "max_price": react.get("max_price")
+#     }
 
 
 # =========================
@@ -68,7 +68,11 @@ def export_stream(collection_name, output_file, transform=None):
 
         cursor = collection.find({}, {"_id": 0}).batch_size(1000)
 
-        for doc in cursor:
+        total = collection.estimated_document_count()
+
+        pbar = tqdm(cursor, total=total, desc=collection_name)
+
+        for doc in pbar:
 
             if transform:
                 doc = transform(doc)
@@ -77,9 +81,21 @@ def export_stream(collection_name, output_file, transform=None):
 
             count += 1
 
-            if count % 10000 == 0:
-                print(f"{collection_name}: {count}")
-                f.flush()
+            if count % 100000 == 0:
+                pbar.set_postfix(count=count)
+
+
+        # for doc in tqdm(cursor, desc=collection_name):
+
+        #     if transform:
+        #         doc = transform(doc)
+
+        #     f.write(json_safe(doc) + "\n")
+
+        #     count += 1
+
+        #     if count % 100000 == 0:
+        #         tqdm.write(f"{collection_name}: {count}")
 
     print(f"✅ DONE {collection_name}: {count}")
 
@@ -99,8 +115,8 @@ def main():
     # 2️⃣ Export product (flatten)
     export_stream(
         collection_name="products_raw",
-        output_file=OUTPUT_DIR / "products_flat.jsonl.gz",
-        transform=flatten_product
+        output_file=OUTPUT_DIR / "products_raw.jsonl.gz",
+        # transform=flatten_product
     )
 
 

@@ -9,7 +9,7 @@ from config.mongo_connection import connect_mongo
 
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.INFO, 
     format="%(asctime)s | %(levelname)s | %(message)s"
 )
 
