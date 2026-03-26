@@ -1,31 +1,19 @@
 import json
 import gzip
 from pathlib import Path
-from pymongo import MongoClient
 from tqdm import tqdm
-
+from config.mongo_connection import connect_mongo
 # =========================
 # CONFIG
 # =========================
 
-MONGO_URI = "mongodb://localhost:27017"
+client, db  = connect_mongo()
 DB_NAME = "glamira"
 
 OUTPUT_DIR = Path("data/export")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 
-# =========================
-# CONNECT
-# =========================
-
-client = MongoClient(MONGO_URI)
-db = client[DB_NAME]
-
-
-# =========================
-# JSON SAFE (fix ObjectId)
-# =========================
 
 def json_safe(doc):
     return json.dumps(doc, default=str, ensure_ascii=False)
@@ -58,6 +46,10 @@ def json_safe(doc):
 
 def export_stream(collection_name, output_file, transform=None):
 
+    if output_file.exists():
+        print(f"⚠️ SKIP {collection_name} (file exists): {output_file}")
+        return
+        
     collection = db[collection_name]
 
     count = 0

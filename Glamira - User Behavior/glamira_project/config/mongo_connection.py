@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 
 # locate .env inside config folder
-BASE_DIR = Path(__file__).resolve().parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 ENV_PATH = BASE_DIR / ".env"
 
 load_dotenv(ENV_PATH)
