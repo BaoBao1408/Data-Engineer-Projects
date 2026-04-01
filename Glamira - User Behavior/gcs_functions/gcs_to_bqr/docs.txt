@@ -1,0 +1,6 @@
+gcloud functions deploy gcs-to-bq-products \
+  --runtime python311 \
+  --trigger-resource glamira-data-lake-qb \
+  --trigger-event google.storage.object.finalize \
+  --entry-point gcs_to_bq \
+  --region asia-southeast1
