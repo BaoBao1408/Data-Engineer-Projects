@@ -22,7 +22,7 @@ FAILED_FILE = BASE_DIR / "failed_id2.json"
 PROCESSED_FILE = BASE_DIR / "processed_id_retry.txt"
 
 MAX_RETRIES = 5
-CONCURRENT = 20   # tăng nhẹ cho nhanh hơn
+CONCURRENT = 50 
 
 
 HEADERS = {
@@ -37,7 +37,7 @@ HEADERS = {
 # =========================
 
 client, db = connect_mongo()
-collection = db["products_raw"]
+collection = db["raw_products"]
 
 
 # =========================

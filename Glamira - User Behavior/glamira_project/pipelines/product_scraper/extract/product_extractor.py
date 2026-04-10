@@ -21,7 +21,7 @@ OUTPUT_DIR = "data/product_extract"
 CHECKPOINT_FILE = os.path.join(OUTPUT_DIR, "processed_id.txt")
 FAILED_FILE = os.path.join(OUTPUT_DIR, "failed_id.jsonl")
 
-CONCURRENT_REQUESTS = 20
+CONCURRENT_REQUESTS = 50
 MAX_RETRIES = 5
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -44,7 +44,7 @@ HEADERS = {
 # ===============================
 
 client, db = connect_mongo()
-collection = db["products_raw"]
+collection = db["raw_products"]
 
 
 # ===============================

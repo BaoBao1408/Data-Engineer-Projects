@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: dim_product
+    columns:
+      - name: product_id
+        tests:
+          - not_null
+          - unique
+
+  - name: dim_store
+    columns:
+      - name: store_code
+        tests:
+          - not_null
+          - unique
+
+  - name: fact_sale
+    columns:
+      - name: event_id
+        tests:
+          - not_null[]
+
+  - name: dim_customer
+    columns:
+      - name: user_id
+        tests:
+          - not_null[]
+
+  - name: dim_location
+    columns:
+      - name: ip
+        tests:
+          - not_null[]

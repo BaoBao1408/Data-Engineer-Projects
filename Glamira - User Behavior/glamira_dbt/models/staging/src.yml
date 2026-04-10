@@ -1,0 +1,12 @@
+version: 2
+
+sources:
+  - name: glamira_raw
+    database: glamira-data-foundation
+    schema: glamira_raw
+
+    tables:
+      - name: fact_user_event
+      - name: dim_product
+      - name: dim_store
+      - name: dim_location

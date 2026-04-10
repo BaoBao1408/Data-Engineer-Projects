@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "glamira-data-foundation",
+  "private_key_id": "53ca8be03b7e92112e59f9ae50ca8bfae934fb93",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCSxwPsA2l3y35r\n6/Rsy8M35K8W0h/AX9rxbfD47QSUwSj6SRfiE46g7V3WiHzgLnohhahqm/hTxN5/\nDMOJ5JPE3K+KSFueS7FpRyiH6UZK/nTR/7qY8+CAi9S34UzYogXSTyhQxmIK1F7O\nlRaGr/KzeLiC1qknpsoSSoz3c/FcE6Mwfr5KPgWC6GT6KCggQ5aYM359+Fyf5IuY\nzV2LnesOOkjGxfRA4bRqJHX599hGaZ5s2mKzO6L1+MzGr5LDoAFrlFViigt+dDwG\noOJJaTMKDe0Mh0VyeFcGOft/4OZpBYk4smEwD/YjHVjZLzVWaxekROabCpWb5+MM\nWKZks0Q1AgMBAAECggEAKV2ZR1y2zqI1IOlA26CZhhkXF1FkzWy2YbBgZ2c1EU9W\n4yLSbk6gtc3v0lRpDS1MEkJ+8ny+ga1MH3ZTbXtUAflIJ6q412Xxu//n9lXSD7Si\n68QsrIqezNubua7vX2ZaSakxbYJbgz3S8lmmHZNczSPKrGUfCyPAc2M7U0oDzbT1\n18z+8YEYGeQ7INuRGI1Dads1YT3gA0Wy1Ewo1BWTgIWpTANeMU5Zc5iIZT0o8skj\nUShU8BVxfs1QPPIOfyJo3H8bzzInhTFyTEE+EYFsDfr62KoD0HQ7Vc+ycOi7A/Dx\nMzN8a6Ye9o/GdZxwJVS7Scn+QM2SkyakLOv5UVxmyQKBgQDCkm2So6XlccCpQLQU\nIPOqDvVMbEefBbuPT4EG4lrDM7YUc5EIZPR54mSxwSHXJqzpzE2MJG0gmOpAXEao\nvsECO1wpgOLm4qnih7arQcM1voLSdL78p+g6eAdOapbwKLUvzSl/aK+plC13B0Dt\nxc2jlzaXOB0tZDy0TW9TPocKUwKBgQDBHcOuWLn6RSeNhtqIwUS5rlMUbfR48zPn\n8H7NW4cwFdKLny4EGvSz5FYRXybrFjpOasbpWL8E7JxaUiZyozLhJ4P7q8rPPPHb\nyW8vs4X6a6EodUk0027Sbg4xOA/jZFLUDdtwcO+M/9U6eqdfoS4JGPxYt53GPF1E\n7aV2HTH2VwKBgQCsvSEISb8zt0yrNqVpJWQN+1+tbIgdVxKQBa5wNS8NE/C3sW32\nPOKK/wIUiXkIsO5cVqQWIhS8FuYJI6MbltZ1q8uDkUhgYKUgVwpGeojbQvqT60/P\nsSXMGtmptZmxNwK8oHESCxfA/qtqfAcZ0T1i2hF+KTRGIzJ9hC2sgtuSvwKBgQCj\n0UXvneCVxxgYXG8BV0GfaZucVvHtsBE2DbLjLWNujPR/8FYusVcnSukf72GqRr7L\nSpTV2ayg1r6Dd/CZiotcqBKz6TUvu3lHgobJJjbfCXI6SdQB9eGqrCVp5y7DLJV+\nwQqHRaZQK62L4AQfgTD2ErXt5ET4prhQAnA70+RQHQKBgGkgma15XJP958h3fMM/\n8nOj48kmx8w+Uq6RN2OhzQ8WzqstET4y+hYcAi1iwi0vwd3owoLsi8O+pqYR9Geq\nSqX8FQL6sMhLTWSanjFJKUHW2zgTNd2F8KEfQbFp8j3gIeEzF5Wf8j4G55VDh/t3\nhJGB5aWgMwVI38JIA/rTgMKf\n-----END PRIVATE KEY-----\n",
+  "client_email": "dbt-bigquery-sa@glamira-data-foundation.iam.gserviceaccount.com",
+  "client_id": "112395437639479175005",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/dbt-bigquery-sa%40glamira-data-foundation.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
