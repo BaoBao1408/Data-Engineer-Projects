@@ -1,43 +1,66 @@
-{{ config(enabled=false) }}
-WITH base AS (
+{{ config(materialized='table') }}
 
-    SELECT
-        e.event_id
-        ,e.user_id
-        ,e.product_id
-        ,e.store_code
-        ,e.ip
-        ,e.session_id
-        ,e.event_time
-        ,e.local_time
-        ,e.current_url
-
-    FROM {{ ref('stg_user_event') }} e
-
+WITH src AS (
+    SELECT *
+    FROM {{ ref('stg_fact_sale') }}
 ),
 
-product_price AS (
-
+clean AS (
     SELECT
-        product_id
-        ,price as price
-    FROM {{ source('glamira_raw', 'dim_product') }}
+        event_id,
+        session_id,
 
+        --  keys
+        SAFE_CAST(customer_key AS INT64) AS customer_key,
+        SAFE_CAST(store_key AS INT64) AS store_key,
+        SAFE_CAST(product_key AS INT64) AS product_key,
+        SAFE_CAST(location_key AS INT64) AS location_key,
+
+        -- measure
+        SAFE_CAST(quantity AS INT64) AS quantity,
+        SAFE_CAST(price AS FLOAT64) AS price,
+
+        -- time
+        DATE(event_date) AS event_date,
+
+        CURRENT_TIMESTAMP() AS ingested_at
+
+    FROM src
+),
+
+filtered AS (
+    SELECT *
+    FROM clean
+    WHERE
+        product_key IS NOT NULL
+        AND store_key IS NOT NULL
+        AND quantity IS NOT NULL
+        AND price IS NOT NULL
+),
+
+dedup AS (
+    SELECT *
+    FROM (
+        SELECT *,
+            ROW_NUMBER() OVER (
+                PARTITION BY event_id
+                ORDER BY event_date DESC
+            ) AS rn
+        FROM filtered
+    )
+    WHERE rn = 1
 )
 
 SELECT
-    b.event_id
-    ,b.user_id
-    ,b.product_id
-    ,b.store_code
-    ,b.ip
-    ,b.session_id
-    ,b.event_time
+    event_id,
+    session_id,
+    customer_key,
+    store_key,
+    product_key,
+    location_key,
+    quantity,
+    price,
+    event_date,
+    ingested_at
 
-    ,p.price
-    ,b.local_time
-    ,b.current_url
-
-FROM base b
-LEFT JOIN product_price p
-    ON b.product_id = p.product_id
+FROM dedup
