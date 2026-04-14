@@ -1,3 +1,4 @@
+{{ config(enabled=false) }}
 SELECT DISTINCT
     user_id
     ,session_id

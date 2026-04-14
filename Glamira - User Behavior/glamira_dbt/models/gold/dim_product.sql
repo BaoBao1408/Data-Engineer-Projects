@@ -1,3 +1,4 @@
+{{ config(enabled=false) }}
 SELECT DISTINCT
     CAST(product_id AS STRING) AS product_id
     ,name

@@ -1,3 +1,4 @@
+{{ config(enabled=false) }}
 SELECT DISTINCT
     store_code
     ,currency

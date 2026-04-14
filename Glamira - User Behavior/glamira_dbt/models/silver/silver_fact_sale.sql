@@ -1,3 +1,4 @@
+{{ config(enabled=false) }}
 WITH base AS (
 
     SELECT

@@ -1,0 +1,25 @@
+airbnb:
+  outputs:
+    dev:
+      type: snowflake
+      account: yybnccr-xz45416
+      user: dbt
+      role: TRANSFORM
+      database: AIRBNB
+      schema: DEV
+      warehouse: COMPUTE_WH
+      threads: 1
+      private_key_path: C:\Projects\Data-Engineer-Projects\DBT_Project\rsa_key.p8
+  target: dev
+
+glamira_dbt:
+  target: dev
+  outputs:
+    dev:
+      type: bigquery
+      method: oauth   
+      project: glamira-data-foundation
+      dataset: glamira
+      threads: 4
+      keyfile: "{{ env_var('GOOGLE_APPLICATION_CREDENTIALS') }}"
+      location: asia-southeast1

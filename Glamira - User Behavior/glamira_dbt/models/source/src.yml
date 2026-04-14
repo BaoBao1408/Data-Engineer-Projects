@@ -6,7 +6,7 @@ sources:
     schema: glamira_raw
 
     tables:
-      - name: fact_user_event
+      - name: user_event
       - name: dim_product
       - name: dim_store
       - name: dim_location

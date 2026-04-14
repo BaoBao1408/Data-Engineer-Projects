@@ -6,7 +6,7 @@ name: 'glamira_dbt'
 version: '1.0.0'
 
 # This setting configures which "profile" dbt uses for this project.
-profile: 'glamira_project'
+profile: 'glamira_dbt'
 
 # These configurations specify where dbt should look for different types of files.
 # The `model-paths` config, for example, states that models in this project can be
@@ -31,14 +31,15 @@ clean-targets:         # directories to be removed by `dbt clean`
 # files using the `{{ config(...) }}` macro.
 models:
   glamira_dbt:
+  
     staging:
       +materialized: view
-      +schema: glamira_raw 
+      +schema: stg 
       
     silver:
       +materialized: table
-      +schema: glamira_silver
+      +schema: silver
 
     gold:
       +materialized: table
-      +schema: glamira_gold
+      +schema: gold

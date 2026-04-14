@@ -117,5 +117,96 @@ CLUSTER BY event_type, product_id AS
 SELECT *
 FROM glamira_raw.tmp_user_event;
 
+---v2
+CREATE OR REPLACE EXTERNAL TABLE glamira_raw.ext_user_event
+(
+  event_id STRING,
+  event_time STRING,
+  event_type STRING,
 
+  user_id STRING,
+  session_id STRING,
+  email_address STRING,
 
+  product_id STRING,
+  quantity STRING,
+  price STRING,
+  currency STRING,  -- define
+
+  ip STRING,
+  user_agent STRING,
+  device STRING,
+  resolution STRING,
+
+  current_url STRING,
+  referrer_url STRING,
+
+  store_id STRING,
+
+  utm_source STRING,
+  utm_medium STRING,
+  recommendation STRING,
+
+  local_time STRING
+)
+OPTIONS (
+  format = 'JSON',
+  uris = ['gs://glamira-data-lake-qb/raw/glamira_upgrade_2/*.jsonl'],
+  ignore_unknown_values = TRUE   -- KEY FIX
+);
+
+CREATE OR REPLACE TABLE glamira_raw.user_event
+PARTITION BY DATE(event_time)
+CLUSTER BY event_type, store_id AS
+
+SELECT
+  -- IDs
+  event_id,
+
+  -- TIME
+  SAFE_CAST(event_time AS TIMESTAMP) AS event_time,
+  SAFE_CAST(local_time AS TIMESTAMP) AS local_time,
+
+  -- EVENT
+  event_type,
+
+  -- USER
+  SAFE_CAST(user_id AS INT64) AS user_id,
+  session_id,
+  email_address,
+
+  -- PRODUCT
+  SAFE_CAST(product_id AS INT64) AS product_id,
+  SAFE_CAST(quantity AS INT64) AS quantity,
+
+  -- 💰 PRICE CLEAN 
+  SAFE_CAST(
+    REPLACE(
+      REPLACE(
+        REPLACE(price, '.', ''),   -- remove thousand separator
+      ',', '.'),                   -- convert decimal
+    '€', '')                      -- remove currency
+  AS FLOAT64) AS price,
+
+  currency,
+
+  -- DEVICE
+  ip,
+  user_agent,
+  device,
+  resolution,
+
+  -- NAVIGATION
+  current_url,
+  referrer_url,
+
+  -- BUSINESS
+  SAFE_CAST(store_id AS INT64) AS store_id,
+
+  -- TRACKING
+  utm_source,
+  utm_medium,
+  SAFE_CAST(recommendation AS BOOL) AS recommendation
+
+FROM glamira_raw.ext_user_event
+WHERE event_time IS NOT NULL
