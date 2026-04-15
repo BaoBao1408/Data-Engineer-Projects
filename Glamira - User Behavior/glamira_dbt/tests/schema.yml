@@ -1,34 +1,36 @@
 version: 2
 
 models:
-  - name: dim_product
+  - name: gold_dim_product
     columns:
-      - name: product_id
+      - name: product_key
         tests:
           - not_null
           - unique
 
-  - name: dim_store
+  - name: gold_dim_store
     columns:
-      - name: store_code
+      - name: store_key
         tests:
           - not_null
           - unique
 
-  - name: fact_sale
+  - name: gold_fact_sale
     columns:
       - name: event_id
         tests:
           - not_null[]
 
-  - name: dim_customer
+  - name: gold_dim_customer
     columns:
-      - name: user_id
+      - name: customer_key
         tests:
           - not_null[]
+          - unique
 
-  - name: dim_location
+  - name: gold_dim_location
     columns:
-      - name: ip
+      - name: location_key
         tests:
           - not_null[]
+          - unique

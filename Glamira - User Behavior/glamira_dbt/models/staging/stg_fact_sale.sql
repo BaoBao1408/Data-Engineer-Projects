@@ -7,9 +7,9 @@ SELECT
     event_id,
     session_id,
 
-    user_id AS customer_key,
-    store_id AS store_key,
-    product_id AS product_key,
+    user_id ,
+    store_id ,
+    product_id ,
 
     location_key,
 

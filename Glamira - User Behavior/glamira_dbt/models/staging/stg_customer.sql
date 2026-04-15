@@ -22,4 +22,3 @@ FROM {{ source('glamira_raw', 'user_event') }}
 
 WHERE 
     user_id IS NOT NULL
-    AND email_address IS NOT NULL

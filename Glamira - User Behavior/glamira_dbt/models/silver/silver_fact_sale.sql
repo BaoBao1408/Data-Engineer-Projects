@@ -10,32 +10,46 @@ clean AS (
         event_id,
         session_id,
 
-        --  keys
-        SAFE_CAST(customer_key AS INT64) AS customer_key,
-        SAFE_CAST(store_key AS INT64) AS store_key,
-        SAFE_CAST(product_key AS INT64) AS product_key,
-        SAFE_CAST(location_key AS INT64) AS location_key,
+        user_id,
+        store_id,
+        product_id,
+        location_key,
 
-        -- measure
         SAFE_CAST(quantity AS INT64) AS quantity,
         SAFE_CAST(price AS FLOAT64) AS price,
 
-        -- time
         DATE(event_date) AS event_date,
 
         CURRENT_TIMESTAMP() AS ingested_at
-
     FROM src
 ),
 
-filtered AS (
-    SELECT *
-    FROM clean
-    WHERE
-        product_key IS NOT NULL
-        AND store_key IS NOT NULL
-        AND quantity IS NOT NULL
-        AND price IS NOT NULL
+mapped AS (
+    SELECT
+        s.event_id,
+        s.session_id,
+
+        -- ✅ giữ full data + map key
+        COALESCE(c.customer_key, -1) AS customer_key,
+        COALESCE(p.product_key, -1) AS product_key,
+        COALESCE(st.store_key, -1) AS store_key,
+        COALESCE(s.location_key, -1) AS location_key,
+
+        s.quantity,
+        s.price,
+        s.event_date,
+        s.ingested_at
+
+    FROM clean s
+
+    LEFT JOIN {{ ref('silver_dim_customer') }} c
+        ON CAST(s.user_id AS STRING) = c.user_id
+
+    LEFT JOIN {{ ref('silver_dim_product') }} p
+        ON s.product_id = p.product_id
+
+    LEFT JOIN {{ ref('silver_dim_store') }} st
+        ON s.store_id = st.store_id
 ),
 
 dedup AS (
@@ -46,7 +60,7 @@ dedup AS (
                 PARTITION BY event_id
                 ORDER BY event_date DESC
             ) AS rn
-        FROM filtered
+        FROM mapped
     )
     WHERE rn = 1
 )
@@ -55,12 +69,11 @@ SELECT
     event_id,
     session_id,
     customer_key,
-    store_key,
     product_key,
+    store_key,
     location_key,
     quantity,
     price,
     event_date,
     ingested_at
-
 FROM dedup

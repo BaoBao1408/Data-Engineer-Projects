@@ -14,7 +14,7 @@ clean AS (
     SELECT
         s.store_code,
 
-        -- 🎯 normalize store_code
+        -- normalize store_code
         SPLIT(s.store_code, '_')[OFFSET(0)] AS base_store_code,
 
         LOWER(TRIM(s.region)) AS region,
@@ -33,7 +33,6 @@ enriched AS (
     SELECT
         c.store_code,
 
-        -- ✅ join đúng key
         sm.store_id,
 
         c.region,
