@@ -16,6 +16,6 @@ FROM (
             PARTITION BY location_key
             ORDER BY ip   -- arbitrary
         ) AS rn
-    FROM {{ ref('stg_location') }}
+    FROM src
 )
 WHERE rn = 1
