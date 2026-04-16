@@ -9,8 +9,8 @@ dedup AS (
     FROM (
         SELECT *,
             ROW_NUMBER() OVER (
-                PARTITION BY store_id
-                ORDER BY store_code
+                PARTITION BY store_key
+                ORDER BY ingested_at DESC
             ) AS rn
         FROM src
         WHERE store_id IS NOT NULL
@@ -37,11 +37,10 @@ final AS (
     FROM dedup
 ),
 
--- 🔥 UNKNOWN ROW
 unknown AS (
     SELECT
         -1 AS store_key,
-        NULL AS store_id,
+        CAST(NULL AS INT64) AS store_id,
         'unknown' AS store_code,
 
         'unknown' AS currency,
@@ -57,5 +56,6 @@ unknown AS (
 )
 
 SELECT * FROM final
+WHERE store_key != -1
 UNION ALL
 SELECT * FROM unknown

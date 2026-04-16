@@ -210,3 +210,83 @@ SELECT
 
 FROM glamira_raw.ext_user_event
 WHERE event_time IS NOT NULL
+
+
+--- sales_dashboard
+CREATE OR REPLACE VIEW glamira_gold.sales_dashboard AS
+SELECT
+    f.event_id,
+    f.event_date,
+    f.time_key,
+
+    f.price,
+    f.quantity,
+
+    f.revenue,
+
+    -- TIME DIM
+
+    t.year,
+    t.month,
+    t.day,
+    t.day_of_week,
+    t.is_weekend,
+
+    -- =====================
+    -- PRODUCT DIM
+    -- =====================
+
+    p.product_key,
+    p.name AS product_name,
+    p.category_id,
+    p.product_type,
+    p.collection,
+
+    -- =====================
+    -- STORE DIM
+    -- =====================
+    st.store_key,
+    st.store_code,
+    st.country AS store_country,
+    st.region,
+    st.currency,
+    st.language,
+
+    -- =====================
+    -- CUSTOMER DIM
+    -- =====================
+    c.customer_key,
+    c.email_address,
+
+    -- =====================
+    -- LOCATION DIM
+    -- =====================
+    l.location_key,
+    l.country AS location_country,
+    l.region AS location_region,
+    l.city
+
+FROM glamira_gold.gold_fact_sale f
+
+LEFT JOIN glamira_gold.gold_dim_product p
+    ON f.product_key = p.product_key
+
+LEFT JOIN (
+    SELECT *
+    FROM glamira_gold.gold_dim_store
+    QUALIFY ROW_NUMBER() OVER (
+        PARTITION BY store_key 
+        ORDER BY updated_at DESC
+    ) = 1
+) st
+ON f.store_key = st.store_key
+
+LEFT JOIN glamira_gold.gold_dim_customer c
+    ON f.customer_key = c.customer_key
+    AND c.is_current = TRUE
+
+LEFT JOIN glamira_gold.gold_dim_location l
+    ON f.location_key = l.location_key
+
+LEFT JOIN glamira_gold.gold_dim_time t
+    ON f.time_key = t.time_key

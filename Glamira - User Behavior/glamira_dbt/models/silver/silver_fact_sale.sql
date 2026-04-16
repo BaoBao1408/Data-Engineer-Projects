@@ -29,7 +29,6 @@ mapped AS (
         s.event_id,
         s.session_id,
 
-        -- ✅ giữ full data + map key
         COALESCE(c.customer_key, -1) AS customer_key,
         COALESCE(p.product_key, -1) AS product_key,
         COALESCE(st.store_key, -1) AS store_key,
