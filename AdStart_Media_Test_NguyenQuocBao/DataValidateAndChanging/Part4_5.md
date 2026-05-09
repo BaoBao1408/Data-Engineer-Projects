@@ -123,3 +123,12 @@ If an operator's file does not arrive by the SLA time, the pipeline alerts immed
 **Proposed change**: On the inbound SMS processing side, check `expired_at` at receipt time. If `received_time > expired_at`, log the event as `attribution_status = EXPIRED` rather than `MATCHED`, and surface this in monitoring. This does not change whether the user gets their service (that's an operator decision) but makes the attribution failure explicit and measurable rather than a hidden data quality issue.
 
 **Trade-off**: No change required from operators. This is a platform-side improvement to the enrichment logic. Low risk.
+
+**What might cause this in a real system:**
+
+1. **Clock skew / out-of-order delivery**: The operator's billing system and subscription system run on different servers with slightly different clocks or different processing queues. Both events happen at roughly the same moment, but the bill notification is processed and delivered to the platform before the subscribe notification due to routing differences.
+2. **Async pipeline with different latencies**: Subscribe events may go through a heavier validation path (checking regulatory opt-in rules, consent logging) while bill attempts are processed on a lighter, faster path. The bill fires before the subscription confirmation is written.
+3. **Retry without status check**: The billing engine may initiate a charge as soon as the user submits their number, before waiting for the formal subscription acknowledgement. If the charge succeeds first, the bill arrives before the subscribe confirmation.
+4. **Batch vs real-time**: If subscribe events are batched hourly but bill events are sent in real-time, late batches would appear after bills even if the subscription logically came first.
+
+The 12–120 second range suggests this is a race condition in near-real-time processing, not a fundamentally broken ordering. A robust pipeline should use **event ordering by msisdn** rather than relying on received_time to determine sequence.

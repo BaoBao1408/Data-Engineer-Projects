@@ -73,7 +73,8 @@ SELECT
 FROM null_summary
 WHERE nulls > 0        
 ORDER BY tbl, null_pct DESC;
-![alt text](image.png)
+
+![1.1 — Row counts and null/empty rates](screenshots\1_1.png) 
 
 FROM campaigns;
 | Table | Rows | Columns with missing values |
@@ -112,7 +113,7 @@ FROM operator_a
 GROUP BY event_code
 ORDER BY event_code;
 
-![alt text](image-1.png)
+![Count by event_code](1_2_eventcode.png)
 
 -- Count by STATUS
 <!-- SQL -->
@@ -123,7 +124,7 @@ SELECT
 FROM operator_a
 GROUP BY status
 ORDER BY total_rows DESC;
-![alt text](image-3.png)
+![Count by STATUS](screenshots\1_2_countstatus.png)
 
 -- Cross-tab: event_code × status (pivot manually)
 SELECT
@@ -137,7 +138,7 @@ FROM operator_a
 GROUP BY event_code
 ORDER BY event_code;
 
-![alt text](image-2.png)
+![event_code × status](screenshots\1_2_eventcodestatus.png)
 
 **event_code counts:**
 
@@ -172,6 +173,29 @@ ORDER BY event_code;
 ---
 
 ### 1.3 — operator_B: transaction_type × rotate_id populated
+<!-- sql -->
+SELECT
+    transaction_type,
+    CASE WHEN rotate_id IS NULL THEN 'empty' ELSE 'populated' END              AS rotate_id_status,
+    COUNT(*)                                                                    AS row_count,
+    ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (PARTITION BY transaction_type), 2) AS pct_within_type
+FROM operator_b
+GROUP BY transaction_type, rotate_id_status
+ORDER BY transaction_type, rotate_id_status;
+
+-- amount stats to understand money
+SELECT
+    transaction_type,
+    COUNT(*)                                               AS total_rows,
+    SUM(CASE WHEN rotate_id IS NOT NULL THEN 1 ELSE 0 END) AS has_rotate_id,
+    SUM(CASE WHEN rotate_id IS NULL     THEN 1 ELSE 0 END) AS no_rotate_id,
+    ROUND(AVG(amount), 4)                                  AS avg_amount,
+    SUM(amount)                                            AS total_amount
+FROM operator_b
+GROUP BY transaction_type
+ORDER BY transaction_type;
+
+![transaction_type x rotate_id](screenshots\1_3_transactiontype.png)
 
 | transaction_type | rotate_id = NULL | rotate_id = present | Total |
 |-----------------|-----------------|---------------------|-------|
@@ -191,45 +215,137 @@ Note also: `amount` on SUB rows is 0.00 (free opt-in), actual charges only appea
 ---
 
 ### 1.4 — operator_C: tracking_code length > 3 characters
+<!-- sql -->
+-- ============================================================
+-- 1.4 — operator_C: tracking_code values longer than 3 characters
+-- ============================================================
 
-**Length distribution:**
+-- QUERY 1: How many? (quantity + summary percent)
+SELECT
+    SUM(CASE WHEN LENGTH(tracking_code) = 3 THEN 1 ELSE 0 END)     AS valid_3chars,
+    SUM(CASE WHEN LENGTH(tracking_code) > 3 THEN 1 ELSE 0 END)     AS invalid_over3,
+    COUNT(*)                                                         AS total_rows,
+    ROUND(100.0 *
+        SUM(CASE WHEN LENGTH(tracking_code) > 3 THEN 1 ELSE 0 END)
+        / COUNT(*), 2)                                               AS invalid_pct,
+    -- Among invalid tracking codes, some rows are still marked as DELIVERED.
+	-- This means billing/subscription may have succeeded, but attribution to a campaign was lost.
+    SUM(CASE WHEN LENGTH(tracking_code) > 3
+             AND delivery_status = 'DELIVERED' THEN 1 ELSE 0 END)   AS invalid_and_delivered,
+    ROUND(100.0 *
+        SUM(CASE WHEN LENGTH(tracking_code) > 3
+                 AND delivery_status = 'DELIVERED' THEN 1 ELSE 0 END)
+        / NULLIF(SUM(CASE WHEN delivery_status = 'DELIVERED'
+                          THEN 1 ELSE 0 END), 0), 2)                 AS pct_of_all_delivered
+FROM operator_c;
 
-| Code length | Count |
-|-------------|-------|
-| 3 chars | 645 |
-| 4 chars | 50 |
-| 5 chars | 96 |
+![How many? (quantity + summary percent)](screenshots\1_4_how_many.png)
 
-**Count of codes longer than 3 characters: 96**
+-- QUERY 2:  length — join - click or not?
+SELECT
+    LENGTH(tracking_code)                                            AS code_length,
+    COUNT(*)                                                         AS row_count,
+    ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2)              AS pct_of_total,
+    SUM(CASE WHEN delivery_status = 'DELIVERED'   THEN 1 ELSE 0 END) AS delivered,
+    SUM(CASE WHEN delivery_status = 'SMSC_QUEUED' THEN 1 ELSE 0 END) AS queued,
+    SUM(CASE WHEN delivery_status = 'FAILED'      THEN 1 ELSE 0 END) AS failed,
+    CASE WHEN LENGTH(tracking_code) = 3
+         THEN 'attributable'
+         ELSE 'attribution lost — no join possible'
+    END                                                              AS attribution_status
+FROM operator_c
+GROUP BY code_length
+ORDER BY code_length;
 
-**Sample examples:**
+![length — join - click or not?](screenshots\1_4_lengthjoinclickedornot.png)
 
-| tracking_code | length | delivery_status |
-|---------------|--------|-----------------|
-| JWGT | 4 | SMSC_QUEUED |
-| IKVE | 4 | SMSC_QUEUED |
-| GIQZ | 4 | DELIVERED |
-| SHPD | 4 | DELIVERED |
-| YHXXK | 5 | DELIVERED |
-| UBEZL | 5 | FAILED |
-| ZSNG | 4 | DELIVERED |
-| UUYQU | 5 | DELIVERED |
+-- QUERY 3: Show a few examples + check typo hypothesis
+-- prefix_match: if LEFT(code,3) = tracking_codes → user type extrar character
+-- if prefix is NULL too → code is wrong / format 
+SELECT
+    oc.tracking_code,
+    LENGTH(oc.tracking_code)                        AS code_length,
+    oc.delivery_status,
+    oc.service_id,
+    LEFT(oc.tracking_code, 3)                       AS prefix_3chars,
+    tc.code                                         AS prefix_match,   -- NULL = không phải typo
+    CASE WHEN tc.code IS NOT NULL
+         THEN 'TYPO — extra chars after valid code'
+         ELSE 'WRONG CODE — prefix also unknown'
+    END                                             AS likely_cause
+FROM operator_c oc
+LEFT JOIN tracking_codes tc
+       ON LEFT(oc.tracking_code, 3) = tc.code
+WHERE LENGTH(oc.tracking_code) > 3
+ORDER BY likely_cause, oc.delivery_status
+LIMIT 15;
 
-**What this might indicate:**
+![length — join - click or not?](screenshots\1_4_few_examples.png)
 
-The `tracking_codes` table defines codes as 3-character alphanumeric strings. Codes longer than 3 characters in `operator_C` will **fail to join** to `tracking_codes.code`, severing the link between the SMS event and the originating click.
+-- QUERY 4: Summary — TYPO vs WRONG CODE
+SELECT
+    CASE WHEN tc.code IS NOT NULL
+         THEN 'TYPO — extra chars after valid code'
+         ELSE 'WRONG CODE — prefix also unknown'
+    END                                             AS failure_type,
+    COUNT(*)                                        AS count,
+    ROUND(100.0 * COUNT(*) / SUM(COUNT(*)) OVER (), 2) AS pct,
+    SUM(CASE WHEN oc.delivery_status = 'DELIVERED'
+             THEN 1 ELSE 0 END)                     AS delivered_count
+FROM operator_c oc
+LEFT JOIN tracking_codes tc
+       ON LEFT(oc.tracking_code, 3) = tc.code
+WHERE LENGTH(oc.tracking_code) > 3
+GROUP BY failure_type
+ORDER BY count DESC;
 
-Likely causes:
-1. **User typo**: The user manually typed the code shown on screen and added an extra character. A 4-char code like "JWGT" when the real code is "JWG" could be a typo with an extra keystroke.
-2. **System concatenation bug**: The operator's SMS parsing may be appending a suffix (service ID suffix, network code) to the tracking code before storing it.
-3. **Expired code reuse**: The user waited for a code to expire and retried — the platform may have issued a new 4-char code as a collision-avoidance measure.
-4. **Case/padding artifact**: Less likely since codes appear clean, but normalization issues could add characters.
+![Summary — TYPO vs WRONG CODE](screenshots\1_4_summary.png)
 
-This represents a data quality gap: ~13% of operator C records (96 out of 741) cannot be attributed back to a click.
+### Findings
+
+96 out of 741 rows (13.0%) contain `tracking_code` values longer than 3 characters.  
+None of these values can successfully join to `tracking_codes.code`, resulting in complete attribution loss.
+
+More importantly, 62 of these invalid rows still have `delivery_status = 'DELIVERED'`.  
+This means the user was successfully charged or subscribed, but the platform could not attribute the revenue back to the originating click or campaign. As a result, approximately 13.2% of all delivered revenue events lose attribution visibility.
+
+Prefix analysis reveals two distinct root causes:
+
+- **8 rows (8.3%)** are likely simple user typos.  
+  The first 3 characters match a valid tracking code in `tracking_codes`, indicating the user probably entered extra trailing characters after the correct code.
+
+- **88 rows (91.7%)** contain completely unknown codes.  
+  Even the first 3-character prefix does not match any valid code. This strongly suggests an upstream system issue, where the operator's SMS parser or external integration appended additional suffixes (such as network identifiers or session tokens) before storing the tracking code.
+
+### Business Impact
+
+This issue directly affects attribution accuracy and campaign performance measurement.  
+Revenue events exist in the system, but cannot be linked back to campaigns, publishers, or clicks, leading to underreported campaign ROI and incomplete conversion analytics.
 
 ---
 
 ### 1.5 — Events per service (VIEW, CLICK_CTA, ENTRY)
+
+<!-- sql -->
+-- Join page_events -> campaigns to take service_name
+-- Pivot by hand into 1 row per service
+SELECT
+    c.service_name,
+    SUM(CASE WHEN pe.event_type = 'VIEW'      THEN 1 ELSE 0 END) AS view_count,
+    SUM(CASE WHEN pe.event_type = 'CLICK_CTA' THEN 1 ELSE 0 END) AS click_cta_count,
+    SUM(CASE WHEN pe.event_type = 'ENTRY'     THEN 1 ELSE 0 END) AS entry_count,
+    COUNT(*)                                                       AS total_events,
+    -- % funnel
+    ROUND(100.0 * SUM(CASE WHEN pe.event_type = 'CLICK_CTA' THEN 1 ELSE 0 END)
+               / NULLIF(SUM(CASE WHEN pe.event_type = 'VIEW' THEN 1 ELSE 0 END), 0), 1) AS cta_over_view_pct,
+    ROUND(100.0 * SUM(CASE WHEN pe.event_type = 'ENTRY' THEN 1 ELSE 0 END)
+               / NULLIF(SUM(CASE WHEN pe.event_type = 'CLICK_CTA' THEN 1 ELSE 0 END), 0), 1) AS entry_over_cta_pct
+FROM page_events pe
+JOIN campaigns c ON pe.campaign_id = c.id
+GROUP BY c.service_name
+ORDER BY c.service_name;
+
+![Events per service (VIEW, CLICK_CTA, ENTRY)](screenshots\1_5.png)
 
 Joined `page_events → campaigns` on `campaign_id`.
 
@@ -248,26 +364,87 @@ The funnel is consistent across all services: roughly 55% of views lead to a CTA
 
 ### 1.6 — Bills arriving before subscription in operator_A
 
+<!-- sql -->
+
+-- Find all case bill arrived before subscribe within the same rotate_id
+WITH bill_events AS (
+    SELECT
+        rotate_id,
+        received_time AS bill_time,
+        transaction_id AS bill_transaction_id
+    FROM operator_a
+    WHERE event_code = 2
+),
+sub_events AS (
+    SELECT
+        rotate_id,
+        received_time AS sub_time,
+        transaction_id AS sub_transaction_id
+    FROM operator_a
+    WHERE event_code = 1
+)
+SELECT
+    b.rotate_id,
+    b.bill_transaction_id,
+    s.sub_transaction_id,
+    b.bill_time,
+    s.sub_time,
+    EXTRACT(EPOCH FROM (s.sub_time - b.bill_time))::INT AS seconds_early
+FROM bill_events b
+JOIN sub_events s ON b.rotate_id = s.rotate_id
+WHERE b.bill_time < s.sub_time
+ORDER BY seconds_early ASC;
+
+-- Summary stats
+WITH bill_events AS (
+    SELECT rotate_id, received_time AS bill_time
+    FROM operator_a WHERE event_code = 2
+),
+sub_events AS (
+    SELECT rotate_id, received_time AS sub_time
+    FROM operator_a WHERE event_code = 1
+),
+early_bills AS (
+    SELECT
+        b.rotate_id,
+        b.bill_time,
+        s.sub_time,
+        EXTRACT(EPOCH FROM (s.sub_time - b.bill_time))::INT AS seconds_early
+    FROM bill_events b
+    JOIN sub_events s ON b.rotate_id = s.rotate_id
+    WHERE b.bill_time < s.sub_time
+)
+SELECT
+    COUNT(*)                          AS total_cases,
+    MIN(seconds_early)                AS min_seconds_early,
+    MAX(seconds_early)                AS max_seconds_early,
+    ROUND(AVG(seconds_early), 1)      AS avg_seconds_early,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY seconds_early) AS median_seconds_early
+FROM early_bills;
+
+![Events per service (VIEW, CLICK_CTA, ENTRY)](screenshots\1_6.png)
+
 **Cases found: 82**
 
-Sample (rotate_id, bill_time, sub_time, seconds_early):
+### Interpretation
 
-| rotate_id | bill_time | sub_time | seconds early |
-|-----------|-----------|----------|---------------|
-| 40283dbe-... | 2026-01-02 13:37:07 | 2026-01-02 13:37:19 | 12s |
-| cbea7974-... | 2026-01-02 22:28:30 | 2026-01-02 22:29:14 | 44s |
-| 1d67f0f8-... | 2026-01-02 22:49:15 | 2026-01-02 22:51:07 | 112s |
-| b99394cb-... | 2026-01-03 07:08:42 | 2026-01-03 07:09:34 | 52s |
+82 cases were identified where billing events (`event_code = 2`) arrived before subscribe events (`event_code = 1`) for the same `rotate_id`.
 
-All 82 cases show bills arriving **12–120 seconds** before the subscribe event, with an average of ~67 seconds.
+The delay ranges from 7 to 120 seconds (median: 71 seconds), which strongly suggests a near-real-time race condition rather than corrupted data.
 
-**What might cause this in a real system:**
+Possible causes include:
 
-1. **Clock skew / out-of-order delivery**: The operator's billing system and subscription system run on different servers with slightly different clocks or different processing queues. Both events happen at roughly the same moment, but the bill notification is processed and delivered to the platform before the subscribe notification due to routing differences.
-2. **Async pipeline with different latencies**: Subscribe events may go through a heavier validation path (checking regulatory opt-in rules, consent logging) while bill attempts are processed on a lighter, faster path. The bill fires before the subscription confirmation is written.
-3. **Retry without status check**: The billing engine may initiate a charge as soon as the user submits their number, before waiting for the formal subscription acknowledgement. If the charge succeeds first, the bill arrives before the subscribe confirmation.
-4. **Batch vs real-time**: If subscribe events are batched hourly but bill events are sent in real-time, late batches would appear after bills even if the subscription logically came first.
+- clock skew between distributed systems
+- asynchronous pipelines with different processing latencies
+- fire-and-forget billing logic
+- batch subscription delivery vs real-time billing delivery
 
-The 12–120 second range suggests this is a race condition in near-real-time processing, not a fundamentally broken ordering. A robust pipeline should use **event ordering by msisdn** rather than relying on received_time to determine sequence.
+### Engineering Recommendation
+
+The pipeline should not rely solely on `received_time` to determine event order.
+
+A practical solution is to temporarily hold unmatched billing events in staging for up to 2 minutes before retrying the subscription join.
+
+This buffering approach would successfully resolve all detected cases because the maximum observed delay is only 120 seconds.
 
 ---
