@@ -167,4 +167,4 @@ UNION ALL SELECT 'operator_a'    , COUNT(*) FROM operator_a
 UNION ALL SELECT 'operator_b'    , COUNT(*) FROM operator_b
 UNION ALL SELECT 'operator_c'    , COUNT(*) FROM operator_c;
 
-![Check data](screenshots/01_schema.png) 
+![Check data](../screenshots/01_schema.png) 
