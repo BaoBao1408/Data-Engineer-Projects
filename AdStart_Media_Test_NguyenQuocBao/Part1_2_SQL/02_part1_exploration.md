@@ -9,6 +9,7 @@
 
 ### 1.1 — Row counts and null/empty rates
 <!-- sql -->
+```sql
 WITH null_summary AS (
     -- campaigns
     SELECT 'campaigns' AS tbl, 'id'           AS col, COUNT(*) AS total, SUM(CASE WHEN id IS NULL OR TRIM(id::TEXT) = '' THEN 1 ELSE 0 END) AS nulls FROM campaigns
@@ -73,8 +74,9 @@ SELECT
 FROM null_summary
 WHERE nulls > 0        
 ORDER BY tbl, null_pct DESC;
+```
 
-![1.1 — Row counts and null/empty rates](screenshots/1_1.png) 
+![1.1 — Row counts and null/empty rates](../screenshots/1_1.png) 
 
 FROM campaigns;
 | Table | Rows | Columns with missing values |
@@ -100,6 +102,7 @@ All other tables are complete with no nulls.
 
 -- Count by event_code
 <!-- SQL -->
+```sql
 SELECT
     event_code,
     COUNT(*)                                    AS total_rows,
@@ -112,11 +115,13 @@ SELECT
 FROM operator_a
 GROUP BY event_code
 ORDER BY event_code;
+```
 
-![Count by event_code](screenshots/1_2_eventcode.png)
+![Count by event_code](../screenshots/1_2_eventcode.png)
 
 -- Count by STATUS
 <!-- SQL -->
+```sql
 SELECT
     status,
     COUNT(*)                                    AS total_rows,
@@ -124,9 +129,11 @@ SELECT
 FROM operator_a
 GROUP BY status
 ORDER BY total_rows DESC;
-![Count by STATUS](screenshots/1_2_countstatus.png)
+```
+![Count by STATUS](../screenshots/1_2_countstatus.png)
 
 -- Cross-tab: event_code × status (pivot manually)
+```sql
 SELECT
     event_code,
     COUNT(*)                                                        AS total,
@@ -137,8 +144,8 @@ SELECT
 FROM operator_a
 GROUP BY event_code
 ORDER BY event_code;
-
-![event_code × status](screenshots/1_2_eventcodestatus.png)
+```
+![event_code × status](../screenshots/1_2_eventcodestatus.png)
 
 **event_code counts:**
 
@@ -174,6 +181,7 @@ ORDER BY event_code;
 
 ### 1.3 — operator_B: transaction_type × rotate_id populated
 <!-- sql -->
+```sql
 SELECT
     transaction_type,
     CASE WHEN rotate_id IS NULL THEN 'empty' ELSE 'populated' END              AS rotate_id_status,
@@ -182,8 +190,9 @@ SELECT
 FROM operator_b
 GROUP BY transaction_type, rotate_id_status
 ORDER BY transaction_type, rotate_id_status;
-
+```
 -- amount stats to understand money
+```sql
 SELECT
     transaction_type,
     COUNT(*)                                               AS total_rows,
@@ -194,8 +203,8 @@ SELECT
 FROM operator_b
 GROUP BY transaction_type
 ORDER BY transaction_type;
-
-![transaction_type x rotate_id](screenshots/1_3_transactiontype.png)
+```
+![transaction_type x rotate_id](../screenshots/1_3_transactiontype.png)
 
 | transaction_type | rotate_id = NULL | rotate_id = present | Total |
 |-----------------|-----------------|---------------------|-------|
@@ -219,7 +228,7 @@ Note also: `amount` on SUB rows is 0.00 (free opt-in), actual charges only appea
 -- ============================================================
 -- 1.4 — operator_C: tracking_code values longer than 3 characters
 -- ============================================================
-
+```sql
 -- QUERY 1: How many? (quantity + summary percent)
 SELECT
     SUM(CASE WHEN LENGTH(tracking_code) = 3 THEN 1 ELSE 0 END)     AS valid_3chars,
@@ -238,10 +247,12 @@ SELECT
         / NULLIF(SUM(CASE WHEN delivery_status = 'DELIVERED'
                           THEN 1 ELSE 0 END), 0), 2)                 AS pct_of_all_delivered
 FROM operator_c;
+```
 
-![How many? (quantity + summary percent)](screenshots/1_4_how_many.png)
+![How many? (quantity + summary percent)](../screenshots/1_4_how_many.png)
 
 -- QUERY 2:  length — join - click or not?
+```sql
 SELECT
     LENGTH(tracking_code)                                            AS code_length,
     COUNT(*)                                                         AS row_count,
@@ -256,12 +267,13 @@ SELECT
 FROM operator_c
 GROUP BY code_length
 ORDER BY code_length;
-
-![length — join - click or not?](screenshots/1_4_lengthjoinclickedornot.png)
+```
+![length — join - click or not?](../screenshots/1_4_lengthjoinclickedornot.png)
 
 -- QUERY 3: Show a few examples + check typo hypothesis
 -- prefix_match: if LEFT(code,3) = tracking_codes → user type extrar character
--- if prefix is NULL too → code is wrong / format 
+-- if prefix is NULL too → code is wrong / format
+```sql 
 SELECT
     oc.tracking_code,
     LENGTH(oc.tracking_code)                        AS code_length,
@@ -279,10 +291,11 @@ LEFT JOIN tracking_codes tc
 WHERE LENGTH(oc.tracking_code) > 3
 ORDER BY likely_cause, oc.delivery_status
 LIMIT 15;
-
-![length — join - click or not?](screenshots/1_4_few_examples.png)
+```
+![length — join - click or not?](../screenshots/1_4_few_examples.png)
 
 -- QUERY 4: Summary — TYPO vs WRONG CODE
+```sql
 SELECT
     CASE WHEN tc.code IS NOT NULL
          THEN 'TYPO — extra chars after valid code'
@@ -298,8 +311,8 @@ LEFT JOIN tracking_codes tc
 WHERE LENGTH(oc.tracking_code) > 3
 GROUP BY failure_type
 ORDER BY count DESC;
-
-![Summary — TYPO vs WRONG CODE](screenshots/1_4_summary.png)
+```
+![Summary — TYPO vs WRONG CODE](../screenshots/1_4_summary.png)
 
 ### Findings
 
@@ -347,7 +360,7 @@ GROUP BY c.service_name
 ORDER BY c.service_name;
 ```
 
-![Events per service (VIEW, CLICK_CTA, ENTRY)](screenshots/1_5.png)
+![Events per service (VIEW, CLICK_CTA, ENTRY)](../screenshots/1_5.png)
 
 Joined `page_events → campaigns` on `campaign_id`.
 
@@ -425,7 +438,7 @@ SELECT
 FROM early_bills;
 ```
 
-![Bills arriving before subscription — summary stats](screenshots/1_6.png)
+![Bills arriving before subscription — summary stats](../screenshots/1_6.png)
 
 **Cases found: 82**
 

@@ -12,6 +12,7 @@ Period: January 2026 | Country: GB | Currency: GBP
 
 0.1 DDL — Create table PostgreSQL
 
+```sql
 DROP TABLE IF EXISTS campaigns CASCADE;
 CREATE TABLE campaigns (
     id          UUID        PRIMARY KEY,
@@ -124,6 +125,8 @@ CREATE TABLE operator_c (
 CREATE INDEX idx_operator_c_tracking_code ON operator_c(tracking_code);
 CREATE INDEX idx_operator_c_msisdn        ON operator_c(msisdn);
 
+```
+
 0.2 Load data from CSV into PostgreSQL
 Step (FK dependency)
 
@@ -159,6 +162,7 @@ FROM '/path/to/operator_B.csv' WITH (FORMAT csv, HEADER true, NULL '');
 FROM '/path/to/operator_C.csv' WITH (FORMAT csv, HEADER true, NULL '');
 
 Double check data inserted into table
+```sql
 SELECT 'campaigns'    , COUNT(*) FROM campaigns
 UNION ALL SELECT 'clicks'        , COUNT(*) FROM clicks
 UNION ALL SELECT 'tracking_codes', COUNT(*) FROM tracking_codes
@@ -166,5 +170,5 @@ UNION ALL SELECT 'page_events'   , COUNT(*) FROM page_events
 UNION ALL SELECT 'operator_a'    , COUNT(*) FROM operator_a
 UNION ALL SELECT 'operator_b'    , COUNT(*) FROM operator_b
 UNION ALL SELECT 'operator_c'    , COUNT(*) FROM operator_c;
-
+```
 ![Check data](../screenshots/01_schema.png) 
