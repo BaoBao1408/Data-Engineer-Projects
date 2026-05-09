@@ -421,7 +421,7 @@ SELECT
     ROUND(AVG(seconds_early), 1)      AS avg_seconds_early,
     PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY seconds_early) AS median_seconds_early
 FROM early_bills;
-```sql
+```
 
 ![Events per service (VIEW, CLICK_CTA, ENTRY)](screenshots/1_6.png)
 
