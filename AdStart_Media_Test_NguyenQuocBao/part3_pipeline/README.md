@@ -1,67 +1,63 @@
-# Part 3 — ETL Pipeline
+# AdStart ETL Pipeline
 
-Pipeline xử lý daily operator files → unified analytical tables → mart.
+Daily ETL pipeline: 3 operator CSV files → DuckDB facts → BI-ready mart.
 
-## Setup
+## Architecture
+
+```
+adstart_etl/
+├── config/                  # Settings + logging (environment-aware)
+├── sql/
+│   ├── raw/                 # Idempotent staging loads (1 file per operator)
+│   ├── dimensions/          # SCD Type 1 dim_campaigns
+│   ├── facts/               # fct_subscriptions, fct_billing, fct_clicks
+│   ├── mart/                # mart_daily_performance
+│   └── quality/             # SQL assertion checks
+├── src/
+│   ├── ingest/              # loaders.py + validator.py
+│   ├── transformations/     # dimensions.py, subscriptions.py, billing_clicks_mart.py
+│   ├── orchestration/       # pipeline.py (Prefect) + quality.py
+│   └── utils/               # db.py (connection factory + SQL runner)
+├── tests/
+│   ├── unit/                # Schema + dimension tests
+│   ├── integration/         # Full ETL scenario tests
+│   └── fixtures/            # Shared conftest.py
+├── schema.sql               # All DDL (CREATE TABLE IF NOT EXISTS)
+└── deployment/              # Dockerfile, Terraform
+```
+
+## Key Design Decisions
+
+| Concern | Decision |
+|---|---|
+| SQL lives in `.sql` files | Python is orchestration only — no inline SQL |
+| Idempotency | Each SQL file `DELETE WHERE report_date = :run_date` before inserting |
+| Attribution | Operator A/B: direct `rotate_id`. Operator B REN: `msisdn → SUB → rotate_id`. Operator C: `tracking_code → lookup → rotate_id` |
+| Data quality | Bad tracking codes (`>3 chars`) logged, not dropped. Unattributed rows counted and surfaced |
+| Config | Single `config/base.py` — swap paths for AWS (S3/Redshift) without touching business logic |
+
+## Running Locally
 
 ```bash
 pip install -r requirements.txt
+
+# Run for yesterday
+python -m src.orchestration.pipeline
+
+# Run for a specific date
+python -m src.orchestration.pipeline --date 2026-01-15
+
+# Run tests
+pytest tests/ -v
 ```
 
-## Chạy pipeline
+## AWS Migration Guide
 
-```bash
-# Xử lý ngày hôm qua (default)
-python pipeline.py
-
-# Xử lý ngày cụ thể
-python pipeline.py --date 2026-01-15
-
-# Prefect UI (optional — xem flow visualization)
-prefect server start   # terminal khác
-python pipeline.py
-# Mở http://localhost:4200
-```
-
-## Cấu trúc file
-
-```
-part3_pipeline/
-├── config.py       — paths, thresholds
-├── schema.sql      — DDL tất cả tables (idempotent)
-├── ingest.py       — đọc CSV files → staging tables
-├── transform.py    — staging → fact tables → mart
-├── pipeline.py     — Prefect flow (orchestration)
-├── aws_notes.md    — map từng component sang AWS
-└── requirements.txt
-```
-
-## Xem kết quả sau khi chạy
-
-```python
-import duckdb
-conn = duckdb.connect("warehouse.duckdb")
-
-# Daily summary
-conn.execute("SELECT * FROM mart_daily_performance ORDER BY report_date DESC").df()
-
-# Pipeline run history
-conn.execute("SELECT * FROM pipeline_runs ORDER BY started_at DESC").df()
-
-# Attribution breakdown
-conn.execute("""
-    SELECT attribution_method, COUNT(*) as count
-    FROM fct_subscriptions
-    GROUP BY 1
-""").df()
-```
-
-## Handle failure cases
-
-| Tình huống | Behavior |
+| Local component | AWS equivalent |
 |---|---|
-| File không có | Task retry 3 lần × 60s → mark failed, log error |
-| Pipeline chạy 2 lần | DELETE WHERE report_date → INSERT lại (idempotent) |
-| Step giữa chừng fail | Prefect mark step failed, các step sau không chạy |
-| Operator C tracking miss | Log warning, insert với campaign_id = NULL (không crash) |
-| Quality check fail | Raise error, ghi vào pipeline_runs, không cập nhật mart |
+| `duckdb.connect(db_path)` | Redshift `psycopg2` / Athena `boto3` |
+| `read_csv_auto(file_path)` | S3 path via Glue DynamicFrame |
+| Prefect `@flow` | Step Functions state machine |
+| Prefect `@task` | Lambda function or Glue job |
+| `pipeline_runs` table | DynamoDB run state + CloudWatch Logs |
+| `mart_daily_performance` | Redshift materialized view or dbt model |

@@ -1,0 +1,181 @@
+# =========================================================
+# 0. Đi vào project
+# =========================================================
+
+cd part3_pipeline
+
+
+# =========================================================
+# 1. Tạo virtual environment bằng uv
+# =========================================================
+
+uv venv
+
+
+# =========================================================
+# 2. Activate venv
+# =========================================================
+
+# Windows PowerShell
+.venv\Scripts\activate
+
+# Linux / Mac
+# source .venv/bin/activate
+
+
+
+# =========================================================
+# 3. Install dependencies
+# =========================================================
+
+uv pip install -r requirements.txt
+
+# hoặc nếu dùng pyproject.toml
+uv pip install -e ".[dev]"
+
+DuckDB CLI
+pip install duckdb
+
+# =========================================================
+# 4. Generate mock raw data if there is no data
+# =========================================================
+
+python generate_mock_data.py
+
+
+# =========================================================
+# 5. Kiểm tra raw files đã tạo chưa
+# =========================================================
+
+# Windows
+dir data\raw
+
+# Linux/Mac
+# ls data/raw
+
+
+# =========================================================
+# 6. Chạy unit/integration tests
+# =========================================================
+
+pytest -v
+
+
+# =========================================================
+# 7. Run full ETL pipeline
+# =========================================================
+
+python pipeline.py --date 2026-01-15
+
+
+# =========================================================
+# 8. Sau khi run xong
+# kiểm tra warehouse file
+# =========================================================
+
+duckdb data/warehouse/warehouse.duckdb
+Nếu chưa có DuckDB CLI, có thể query bằng Python:
+
+python
+import duckdb
+
+conn = duckdb.connect("data/warehouse/warehouse.duckdb")
+conn.sql("SHOW TABLES").show()
+Thứ tự bảng nên xem
+
+Bắt đầu từ raw layer:
+
+conn.sql("SELECT COUNT(*) FROM raw_clicks").show()
+conn.sql("SELECT * FROM raw_clicks LIMIT 10").show()
+
+Query mart:
+
+conn.sql("""
+SELECT *
+FROM mart_daily_performance
+ORDER BY report_date DESC, total_revenue DESC
+LIMIT 20
+""").show()
+python
+
+conn.sql("""
+SELECT report_date, COUNT(*) AS rows
+FROM mart_daily_performance
+GROUP BY report_date
+ORDER BY report_date
+""").show()
+python
+
+conn.sql("""
+SELECT
+    report_date,
+    campaign_id,
+    service_name,
+    total_clicks,
+    total_subscriptions,
+    total_first_bills,
+    total_revenue,
+    sub_conversion_rate,
+    bill_conversion_rate
+FROM mart_daily_performance
+ORDER BY report_date DESC, total_revenue DESC
+""").show()
+python
+
+conn.sql("""
+SELECT *
+FROM mart_daily_performance
+WHERE total_clicks > 0
+  AND total_subscriptions = 0
+""").show()
+python
+
+conn.sql("""
+SELECT *
+FROM mart_daily_performance
+WHERE total_revenue < 0
+   OR sub_conversion_rate > 1
+   OR bill_conversion_rate > 1
+   OR total_subscriptions > total_clicks
+""").show()
+Trace theo rotate_id:
+
+python
+
+rotate_id = "rotate-aaa"
+
+conn.sql(f"""
+SELECT *
+FROM raw_clicks
+WHERE rotate_id = '{rotate_id}'
+""").show()
+python
+
+conn.sql(f"""
+SELECT *
+FROM fct_subscriptions
+WHERE rotate_id = '{rotate_id}'
+""").show()
+python
+
+conn.sql(f"""
+SELECT *
+FROM fct_billing
+WHERE subscription_id IN (
+    SELECT subscription_id
+    FROM fct_subscriptions
+    WHERE rotate_id = '{rotate_id}'
+)
+""").show()
+Nếu muốn kiểm tra nhanh đang có bảng nào:
+
+python
+
+conn.sql("SHOW TABLES").show()
+Mental model đơn giản
+
+raw_*: dữ liệu gần như nguyên bản từ file CSV.
+dim_*: bảng mô tả entity, ví dụ campaign.
+fct_*: sự kiện nghiệp vụ, ví dụ click, subscription, billing.
+mart_*: bảng đã tổng hợp để report/dashboard.
+Với người mới, đừng bắt đầu bằng raw_* quá lâu. Hãy mở mart_daily_performance trước để hiểu output cuối, rồi quay ngược về fct_* và raw_* khi cần debug.
