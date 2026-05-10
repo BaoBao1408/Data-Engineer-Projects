@@ -19,9 +19,8 @@ services:
 
     command: >
       sh -c "
-      python generate_mock_data.py &&
       pytest tests/ -v &&
-      python src/orchestration/flow.py --date 2026-01-15
+      python src/orchestration/pipeline.py --date 2026-01-15
       "
 
     restart: unless-stopped
