@@ -8,15 +8,15 @@ venv/
 *.egg-info/
 
 # DuckDB warehouse file (contains real data — never commit)
-*.duckdb
-*.duckdb.wal
+# *.duckdb
+# *.duckdb.wal
 
 # Logs
 logs/
 *.log
 
 # Data files (raw CSVs contain PII — never commit)
-data/
+# data/
 !data/.gitkeep
 
 # Prefect
