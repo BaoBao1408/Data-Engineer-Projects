@@ -1,0 +1,20 @@
+--Build Image
+docker compose build
+
+--Run Pipeline
+docker compose up
+
+test:
+	pytest tests/ -v
+
+--if we run success:
+data/warehouse/warehouse.duckdb
+
+--verify container
+docker ps
+
+--viewlog:
+docker logs adstart_pipeline
+
+healthcheck:
+  test: ["CMD", "python", "-c", "import duckdb"]
