@@ -9,7 +9,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-from temp.config.base import settings
+from config.base import settings
 
 
 def configure_logging(run_date: date = None) -> None:

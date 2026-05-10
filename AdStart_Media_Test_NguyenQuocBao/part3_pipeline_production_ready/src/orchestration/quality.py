@@ -13,7 +13,7 @@ from pathlib import Path
 
 import duckdb
 
-from temp.src.utils.db import run_sql_file
+from src.utils.db import run_sql_file
 
 logger = logging.getLogger(__name__)
 

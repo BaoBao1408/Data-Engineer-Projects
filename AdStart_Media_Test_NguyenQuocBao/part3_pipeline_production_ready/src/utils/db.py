@@ -7,13 +7,13 @@ Centralises:
   - Parameterised SQL execution from .sql files
 """
 from __future__ import annotations
-
+import re
 import logging
 from pathlib import Path
 
 import duckdb
 
-from config.base import settings
+from config.base import settings  # <-- chỉ giữ lại import này
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,13 @@ def run_sql_file(
         for key, val in params.items():
             sql = sql.replace(f":{key}", f"'{val}'")
 
-    for statement in sql.split(";"):
-        stmt = statement.strip()
-        if stmt:
+    # for statement in sql.split(";"):
+    #     stmt = statement.strip()
+    #     if stmt:
+    #         conn.execute(stmt)
+    # conn.execute(sql)
+    statements = [s.strip() for s in re.split(r';\s*\n', sql) if s.strip()]
+    for stmt in statements:
+        clean = re.sub(r'--[^\n]*', '', stmt).strip()
+        if clean:
             conn.execute(stmt)

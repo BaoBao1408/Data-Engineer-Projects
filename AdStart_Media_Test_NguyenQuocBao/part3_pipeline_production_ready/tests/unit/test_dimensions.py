@@ -50,14 +50,14 @@ class TestSchema:
 
 class TestDimCampaigns:
     def test_loads_correctly(self, conn):
-        from temp.src.transformations.dimensions import build_dim_campaigns
+        from src.transformations.dimensions import build_dim_campaigns
         _seed(conn)
         count = build_dim_campaigns(conn)
         assert count == 3
 
     def test_is_idempotent(self, conn):
         """INSERT OR IGNORE — running twice must not duplicate rows."""
-        from temp.src.transformations.dimensions import build_dim_campaigns
+        from src.transformations.dimensions import build_dim_campaigns
         _seed(conn)
         build_dim_campaigns(conn)
         build_dim_campaigns(conn)

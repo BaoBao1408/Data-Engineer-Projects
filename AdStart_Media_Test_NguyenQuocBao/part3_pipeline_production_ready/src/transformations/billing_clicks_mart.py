@@ -13,7 +13,7 @@ from __future__ import annotations
 import logging
 from datetime import date
 import duckdb
-from temp.src.utils.db import run_sql_file
+from src.utils.db import run_sql_file
 
 logger = logging.getLogger(__name__)
 

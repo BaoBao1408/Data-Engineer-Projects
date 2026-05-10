@@ -23,21 +23,21 @@ from datetime import date, timedelta
 from prefect import flow, task, get_run_logger
 
 from config import configure_logging
-from temp.src.utils.db import get_connection
-from temp.src.ingest.loaders import (
+from src.utils.db import get_connection
+from src.ingest.loaders import (
     load_operator_a,
     load_operator_b,
     load_operator_c,
     load_static_files,
 )
-from temp.src.transformations import (
+from src.transformations import (
     build_dim_campaigns,
     build_fct_subscriptions,
     build_fct_billing,
     build_fct_clicks,
     build_mart,
 )
-from temp.src.orchestration.quality import run_quality_checks
+from src.orchestration.quality import run_quality_checks
 
 logger = logging.getLogger(__name__)
 

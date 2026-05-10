@@ -42,7 +42,7 @@ def _seed_clicks(conn):
 
 
 def _setup(conn):
-    from temp.src.transformations.dimensions import build_dim_campaigns
+    from src.transformations.dimensions import build_dim_campaigns
     _seed_campaigns(conn)
     _seed_clicks(conn)
     build_dim_campaigns(conn)
@@ -51,7 +51,7 @@ def _setup(conn):
 class TestOperatorAAttribution:
     def test_direct_rotate_id(self, conn):
         """Operator A: event_code=1 with rotate_id → direct_rotate_id attribution."""
-        from temp.src.transformations.subscriptions import build_fct_subscriptions
+        from src.transformations.subscriptions import build_fct_subscriptions
         run_date = date(2026, 1, 15)
         _setup(conn)
         conn.execute(f"""
@@ -76,8 +76,8 @@ class TestOperatorBRenAttribution:
         Operator B REN rows have no rotate_id.
         Chain: REN.msisdn → most-recent SUB → rotate_id → campaign.
         """
-        from temp.src.transformations.subscriptions import build_fct_subscriptions
-        from temp.src.transformations.billing_clicks_mart import build_fct_billing
+        from src.transformations.subscriptions import build_fct_subscriptions
+        from src.transformations.billing_clicks_mart import build_fct_billing
 
         _setup(conn)
 
@@ -114,7 +114,7 @@ class TestOperatorCTracking:
         Pipeline must log and continue, not raise.
         Only the valid 3-char code row should be attributed.
         """
-        from temp.src.transformations.subscriptions import build_fct_subscriptions
+        from src.transformations.subscriptions import build_fct_subscriptions
         run_date = date(2026, 1, 15)
         _setup(conn)
 
@@ -135,7 +135,7 @@ class TestOperatorCTracking:
 class TestIdempotency:
     def test_rerun_same_date_no_duplicates(self, conn):
         """Running pipeline twice for the same date must not duplicate rows."""
-        from temp.src.transformations.subscriptions import build_fct_subscriptions
+        from src.transformations.subscriptions import build_fct_subscriptions
         run_date = date(2026, 1, 15)
         _setup(conn)
 
