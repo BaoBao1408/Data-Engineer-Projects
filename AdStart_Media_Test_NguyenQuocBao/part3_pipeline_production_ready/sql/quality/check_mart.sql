@@ -1,7 +1,7 @@
 -- sql/quality/check_mart.sql
 -- Quality assertions run after mart build.
 -- Each query MUST return 0 rows to pass.
--- AWS: run as a Lambda after Glue jobs complete; alert via SNS on failure.
+-- AWS: run as a Lambda after Glue jobs complete alert via SNS on failure.
 
 -- check: mart must have rows for run_date
 SELECT 'mart_has_no_rows' AS check_name, COUNT(*) AS failing_rows

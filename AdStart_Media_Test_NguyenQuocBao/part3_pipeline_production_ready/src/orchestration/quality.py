@@ -34,7 +34,12 @@ def run_quality_checks(conn: duckdb.DuckDBPyConnection, run_date: date) -> bool:
 
         for statement in sql_rendered.split(";"):
             stmt = statement.strip()
-            if not stmt:
+            # Bỏ qua nếu chỉ là comment hoặc rỗng
+            non_comment = "\n".join(
+                line for line in stmt.splitlines()
+                if not line.strip().startswith("--")
+            ).strip()
+            if not non_comment:
                 continue
             try:
                 rows = conn.execute(stmt).fetchall()

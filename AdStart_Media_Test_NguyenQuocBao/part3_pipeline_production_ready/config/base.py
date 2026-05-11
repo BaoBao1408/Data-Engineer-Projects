@@ -23,15 +23,15 @@ class Settings:
 
     # ── Paths (LOCAL) ──────────────────────────────────────────
     # AWS: replace with s3://your-bucket/raw/ + Redshift DSN
-    data_dir: Path = Path("data")
-    db_path: Path = Path("warehouse.duckdb")
+    data_dir: Path = Path("data/raw")
+    db_path: Path = Path("data/warehouse/warehouse.duckdb")
     log_dir: Path = Path("logs")
 
     # ── Operator file mapping ───────────────────────────────────
     operator_files: dict = field(default_factory=lambda: {
-        "operator_a": "operator_a.csv",
-        "operator_b": "operator_b.csv",
-        "operator_c": "operator_c.csv",
+        "operator_a": "operator_A.csv",
+        "operator_b": "operator_B.csv",
+        "operator_c": "operator_C.csv",
     })
 
     static_files: dict = field(default_factory=lambda: {

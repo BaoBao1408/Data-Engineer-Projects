@@ -1,3 +1,6 @@
+
+---
+
 # Part 3 Pipeline — Full Code Run Flow
 
 ## 1. Open Project
@@ -99,6 +102,17 @@ tracking_codes.csv
 ```
 
 ---
+# INSTALL dependencies
+uv pip install -e ".[dev]"
+---
+
+## 2. TEST RUN PREPIPELINE
+
+```bash
+pytest tests/ -v
+```
+
+EXPECTED RESULT: ALL tests PASSED.
 
 # 8. Run Pipeline Locally
 
