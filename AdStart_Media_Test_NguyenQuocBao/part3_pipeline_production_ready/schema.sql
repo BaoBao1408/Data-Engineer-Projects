@@ -181,6 +181,26 @@ CREATE TABLE IF NOT EXISTS mart_daily_performance (
     currency              VARCHAR       NOT NULL DEFAULT 'GBP',
     sub_conversion_rate   DECIMAL(8,6),
     bill_conversion_rate  DECIMAL(8,6),
+    -- Attribution health (Layer 2) — operator_C unattributed data
+    unattributed_subscriptions  INTEGER       NOT NULL DEFAULT 0,
+    unattributed_revenue_est    DECIMAL(12,4) NOT NULL DEFAULT 0,
+    -- estimated via avg revenue per attributed sub for same campaign
+    attribution_rate            DECIMAL(8,6),
+    -- = attributed / (attributed + unattributed); NULL if no data
     loaded_at             TIMESTAMPTZ   NOT NULL DEFAULT now(),
     PRIMARY KEY (report_date, campaign_id)
+);
+
+CREATE TABLE IF NOT EXISTS fct_unattributed_events (
+    event_id              VARCHAR      PRIMARY KEY,
+    operator              VARCHAR      NOT NULL,
+    source_table          VARCHAR      NOT NULL,   -- e.g. 'raw_operator_c'
+    msisdn                VARCHAR,
+    raw_tracking_code     VARCHAR,                  -- original code as received
+    event_time            TIMESTAMPTZ,
+    report_date           DATE         NOT NULL,
+    unattributed_reason   VARCHAR      NOT NULL,
+    -- 'tracking_code_too_long'   — SMS parser suffix bug (LENGTH > 3)
+    -- 'no_matching_tracking_code'— valid length but expired / missing in raw_tracking_codes
+    loaded_at             TIMESTAMPTZ  NOT NULL DEFAULT now()
 );

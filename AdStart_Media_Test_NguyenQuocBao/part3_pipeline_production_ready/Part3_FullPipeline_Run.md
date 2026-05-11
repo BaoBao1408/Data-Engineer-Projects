@@ -185,6 +185,13 @@ Ctrl + Shift + P
 # 12. Query Warehouse
 
 ## Show Tables
+python
+import duckdb
+conn = duckdb.connect("data/warehouse/warehouse.duckdb")
+conn.sql("SHOW TABLES").show()
+
+conn.sql("SELECT * FROM fct_unattributed_events").show()
+conn.sql("SELECT * FROM dim_campaigns").show()
 
 ```sql
 SHOW TABLES;
