@@ -157,7 +157,7 @@ class AWSWarehouse:
             s3_path = self._s3_path(layer, table)
 
             # Partition mặc định theo report_date nếu có
-            if partition_cols is None and partition_date is not None:
+            if not partition_cols and partition_date is not None:
                 df["report_date"] = str(partition_date)
                 partition_cols = ["report_date"]
 

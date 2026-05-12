@@ -1,209 +1,281 @@
 """
-src/orchestration/pipeline.py — Main Prefect flow orchestrating the full ETL.
+src/orchestration/pipeline.py — Prefect flow cho adstart data pipeline.
 
-Run locally:
-    python -m src.orchestration.pipeline                  # yesterday
-    python -m src.orchestration.pipeline --date 2026-01-15
+LOCAL  : DuckDB + local CSV files
+AWS    : S3 (raw CSV) → S3 Parquet (warehouse) + Glue Catalog + Athena
 
-Prefect UI (optional):
-    prefect server start          # in separate terminal
-    python -m src.orchestration.pipeline
+Flow stages:
+  1. ingest_raw       → Load 3 operators + 4 static files
+  2. build_dimensions → dim_campaigns
+  3. build_facts      → fct_subscriptions, fct_billing, fct_clicks
+  4. build_mart       → mart_daily_performance
+  5. quality_checks   → Assertions, SNS alert if fail
 
-AWS equivalents:
-    @flow  → Step Functions state machine
-    @task  → Lambda function or Glue job step
-    retries → Step Functions retry config
+Idempotency:
+  - Mỗi stage dùng mode="overwrite_partitions" → safe re-run
+  - Prefect retry decorator → auto-retry on transient S3/Athena errors
+
+Scheduling:
+  AWS production: EventBridge rule → trigger Lambda → kick Prefect run
+  Local dev     : `python -m src.orchestration.pipeline --date 2026-01-15`
 """
 from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from datetime import date, timedelta
 
 from prefect import flow, task, get_run_logger
 
-from config import configure_logging
-from src.utils.db import get_connection
+from config.base import settings
 from src.ingest.loaders import (
-    load_operator_a,
-    load_operator_b,
-    load_operator_c,
-    load_static_files,
+    load_operator_a, load_operator_b, load_operator_c, load_static_files
 )
-from src.transformations import (
-    build_dim_campaigns,
-    build_fct_subscriptions,
-    build_fct_billing,
-    build_fct_clicks,
-    build_mart,
+from src.transformations.dimensions import build_dim_campaigns
+from src.transformations.subscriptions import build_fct_subscriptions
+from src.transformations.billing_clicks_mart import (
+    build_fct_billing, build_fct_clicks, build_mart_daily_performance
 )
 from src.orchestration.quality import run_quality_checks
+from src.utils.aws_warehouse import AWSWarehouse
 
 logger = logging.getLogger(__name__)
 
 
-# ── Prefect Tasks ────────────────────────────────────────────────
-# retries=3: if file not yet delivered, wait and retry (S3 eventual consistency)
+# ── Tasks ─────────────────────────────────────────────────────────
 
-@task(retries=3, retry_delay_seconds=60, name="ingest-operator-a")
-def task_ingest_a(run_date: date) -> dict:
-    conn = get_connection()
-    try:
-        return load_operator_a(conn, run_date)
-    finally:
-        conn.close()
-
-
-@task(retries=3, retry_delay_seconds=60, name="ingest-operator-b")
-def task_ingest_b(run_date: date) -> dict:
-    conn = get_connection()
-    try:
-        return load_operator_b(conn, run_date)
-    finally:
-        conn.close()
-
-
-@task(retries=3, retry_delay_seconds=60, name="ingest-operator-c")
-def task_ingest_c(run_date: date) -> dict:
-    conn = get_connection()
-    try:
-        return load_operator_c(conn, run_date)
-    finally:
-        conn.close()
-
-
-@task(retries=2, retry_delay_seconds=30, name="ingest-static")
-def task_ingest_static() -> dict:
-    conn = get_connection()
-    try:
-        return load_static_files(conn)
-    finally:
-        conn.close()
-
-
-@task(name="build-dim-campaigns")
-def task_dim_campaigns() -> int:
-    conn = get_connection()
-    try:
-        return build_dim_campaigns(conn)
-    finally:
-        conn.close()
-
-
-@task(name="build-fct-subscriptions")
-def task_fct_subscriptions(run_date: date) -> int:
-    conn = get_connection()
-    try:
-        return build_fct_subscriptions(conn, run_date)
-    finally:
-        conn.close()
-
-
-@task(name="build-fct-billing")
-def task_fct_billing(run_date: date) -> int:
-    conn = get_connection()
-    try:
-        return build_fct_billing(conn, run_date)
-    finally:
-        conn.close()
-
-
-@task(name="build-fct-clicks")
-def task_fct_clicks(run_date: date) -> int:
-    conn = get_connection()
-    try:
-        return build_fct_clicks(conn, run_date)
-    finally:
-        conn.close()
-
-
-@task(name="build-mart")
-def task_mart(run_date: date) -> int:
-    conn = get_connection()
-    try:
-        return build_mart(conn, run_date)
-    finally:
-        conn.close()
-
-
-@task(name="quality-checks")
-def task_quality(run_date: date) -> bool:
-    conn = get_connection()
-    try:
-        return run_quality_checks(conn, run_date)
-    finally:
-        conn.close()
-
-
-# ── Main Prefect Flow ────────────────────────────────────────────
-
-@flow(
-    name="adstart-daily-pipeline",
-    description="Daily ETL: operator files → unified facts → mart",
+@task(
+    name="ingest-operator-a",
+    retries=3,
+    retry_delay_seconds=30,
+    description="Load operator_A CSV → S3 Parquet raw_operator_a",
 )
-def daily_pipeline(run_date: date | None = None) -> dict:
-    """
-    Execution order:
-      1. Ingest operator files (parallel-safe, no shared state)
-      2. Load static reference files
-      3. Build dim_campaigns
-      4. Build fact tables (sub → billing → clicks, in dependency order)
-      5. Build mart
-      6. Run quality checks
+def task_load_operator_a(wh: AWSWarehouse, run_date: date) -> dict:
+    return load_operator_a(wh, run_date)
 
-    Any step failure marks the Prefect run as FAILED and can be retried from the UI.
-    """
-    if run_date is None:
-        run_date = date.today() - timedelta(days=1)
 
-    configure_logging(run_date)
-    logger.info(f"═══ Pipeline starting for date: {run_date} ═══")
+@task(
+    name="ingest-operator-b",
+    retries=3,
+    retry_delay_seconds=30,
+    description="Load operator_B CSV → S3 Parquet raw_operator_b",
+)
+def task_load_operator_b(wh: AWSWarehouse, run_date: date) -> dict:
+    return load_operator_b(wh, run_date)
 
-    # Step 1 — Ingest (can run in parallel with ConcurrentTaskRunner)
-    task_ingest_a(run_date)
-    task_ingest_b(run_date)
-    task_ingest_c(run_date)
-    task_ingest_static()
 
-    # Step 2 — Dimensions
-    dim_count = task_dim_campaigns()
+@task(
+    name="ingest-operator-c",
+    retries=3,
+    retry_delay_seconds=30,
+    description="Load operator_C CSV → S3 Parquet raw_operator_c",
+)
+def task_load_operator_c(wh: AWSWarehouse, run_date: date) -> dict:
+    return load_operator_c(wh, run_date)
 
-    # Step 3 — Facts (order matters: sub must precede billing and clicks)
-    sub_count   = task_fct_subscriptions(run_date)
-    bill_count  = task_fct_billing(run_date)
-    click_count = task_fct_clicks(run_date)
 
-    # Step 4 — Mart
-    mart_count = task_mart(run_date)
+@task(
+    name="ingest-static-files",
+    retries=2,
+    description="Load campaigns, clicks, tracking_codes, page_events",
+)
+def task_load_static_files(wh: AWSWarehouse) -> dict:
+    return load_static_files(wh)
 
-    # Step 5 — Quality gate
-    quality_ok = task_quality(run_date)
 
-    logger.info(
-        f"\n═══ Pipeline completed for {run_date} ═══\n"
-        f"  Subscriptions : {sub_count:,}\n"
-        f"  Billings      : {bill_count:,}\n"
-        f"  Clicks        : {click_count:,}\n"
-        f"  Mart rows     : {mart_count:,}\n"
-        f"  Quality       : {'✓ PASSED' if quality_ok else '✗ FAILED'}\n"
-    )
+@task(name="build-dim-campaigns", description="Populate dim_campaigns (SCD-0)")
+def task_build_dim_campaigns(wh: AWSWarehouse) -> int:
+    return build_dim_campaigns(wh)
+
+
+@task(
+    name="build-fct-subscriptions",
+    description="Merge 3-operator subscriptions with attribution",
+    retries=2,
+    retry_delay_seconds=60,
+)
+def task_build_fct_subscriptions(wh: AWSWarehouse, run_date: date) -> int:
+    return build_fct_subscriptions(wh, run_date)
+
+
+@task(name="build-fct-billing", description="Build fct_billing from operator A+B")
+def task_build_fct_billing(wh: AWSWarehouse, run_date: date) -> int:
+    return build_fct_billing(wh, run_date)
+
+
+@task(name="build-fct-clicks", description="Build fct_clicks with funnel flags")
+def task_build_fct_clicks(wh: AWSWarehouse, run_date: date) -> int:
+    return build_fct_clicks(wh, run_date)
+
+
+@task(name="build-mart", description="Aggregate mart_daily_performance")
+def task_build_mart(wh: AWSWarehouse, run_date: date) -> int:
+    return build_mart_daily_performance(wh, run_date)
+
+
+@task(
+    name="quality-checks",
+    description="Run post-build quality assertions",
+)
+def task_quality_checks(wh: AWSWarehouse, run_date: date) -> dict:
+    suite = run_quality_checks(wh, run_date)
+    if not suite.passed:
+        raise ValueError(
+            f"Quality checks FAILED for {run_date}:\n{suite.summary()}"
+        )
     return {
-        "run_date":   str(run_date),
-        "mart_rows":  mart_count,
-        "quality_ok": quality_ok,
+        "total":   len(suite.results),
+        "passed":  sum(1 for r in suite.results if r.passed),
+        "failed":  len(suite.failures),
     }
 
 
-# ── Entry point ──────────────────────────────────────────────────
+# ── Main flow ─────────────────────────────────────────────────────
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run AdStart daily ETL pipeline")
+@flow(
+    name="adstart-daily-pipeline",
+    description=(
+        "Daily ELT pipeline: S3 raw CSV → Parquet warehouse → Athena mart. "
+        "Runs for a single business date."
+    ),
+    log_prints=True,
+)
+def run_pipeline(run_date: date | None = None) -> dict:
+    """
+    Main Prefect flow.
+
+    Args:
+        run_date: Ngày cần process. Mặc định = hôm qua (D-1).
+
+    Returns:
+        Summary dict với row counts cho từng layer.
+
+    Usage (local):
+        python -m src.orchestration.pipeline --date 2026-01-15
+
+    Usage (Prefect UI):
+        Tạo deployment → schedule hàng ngày lúc 06:00 UTC
+    """
+    plog = get_run_logger()
+
+    if run_date is None:
+        from datetime import datetime, timezone
+        run_date = (datetime.now(timezone.utc) - timedelta(days=1)).date()
+
+    plog.info(f"════════════════════════════════════════")
+    plog.info(f" Pipeline starting: run_date = {run_date}")
+    plog.info(f" Environment      : {settings.env.value}")
+    if settings.is_aws:
+        plog.info(f" Raw bucket       : s3://{settings.raw_bucket}/")
+        plog.info(f" Warehouse bucket : s3://{settings.warehouse_bucket}/")
+        plog.info(f" Athena DB (raw)  : {settings.glue_raw_database}")
+        plog.info(f" Athena DB (wh)   : {settings.glue_warehouse_database}")
+    plog.info(f"════════════════════════════════════════")
+
+    # ── Open warehouse connection ─────────────────────────────────
+    wh = AWSWarehouse.from_settings().open()
+
+    summary: dict = {"run_date": str(run_date)}
+
+    try:
+        # ── Stage 1: Ingest ───────────────────────────────────────
+        plog.info("[ Stage 1/5 ] Ingesting raw files ...")
+        r_a      = task_load_operator_a(wh, run_date)
+        r_b      = task_load_operator_b(wh, run_date)
+        r_c      = task_load_operator_c(wh, run_date)
+        r_static = task_load_static_files(wh)
+
+        summary["ingest"] = {
+            "operator_a":     r_a.get("row_count"),
+            "operator_b":     r_b.get("row_count"),
+            "operator_c":     r_c.get("row_count"),
+            "raw_campaigns":  r_static.get("raw_campaigns", {}).get("row_count"),
+            "raw_clicks":     r_static.get("raw_clicks", {}).get("row_count"),
+        }
+        plog.info(f"  ✓ Ingest: {summary['ingest']}")
+
+        # ── Stage 2: Dimensions ───────────────────────────────────
+        plog.info("[ Stage 2/5 ] Building dimension tables ...")
+        n_dim = task_build_dim_campaigns(wh)
+        summary["dimensions"] = {"dim_campaigns": n_dim}
+        plog.info(f"  ✓ dim_campaigns: {n_dim:,} rows")
+
+        # ── Stage 3: Facts ────────────────────────────────────────
+        plog.info("[ Stage 3/5 ] Building fact tables ...")
+        n_subs    = task_build_fct_subscriptions(wh, run_date)
+        n_billing = task_build_fct_billing(wh, run_date)
+        n_clicks  = task_build_fct_clicks(wh, run_date)
+
+        summary["facts"] = {
+            "fct_subscriptions": n_subs,
+            "fct_billing":       n_billing,
+            "fct_clicks":        n_clicks,
+        }
+        plog.info(f"  ✓ Facts: {summary['facts']}")
+
+        # ── Stage 4: Mart ─────────────────────────────────────────
+        plog.info("[ Stage 4/5 ] Building mart tables ...")
+        n_mart = task_build_mart(wh, run_date)
+        summary["mart"] = {"mart_daily_performance": n_mart}
+        plog.info(f"  ✓ mart_daily_performance: {n_mart:,} campaign rows")
+
+        # ── Stage 5: Quality ──────────────────────────────────────
+        plog.info("[ Stage 5/5 ] Running quality checks ...")
+        qr = task_quality_checks(wh, run_date)
+        summary["quality"] = qr
+        plog.info(f"  ✓ Quality: {qr['passed']}/{qr['total']} checks passed")
+
+        summary["status"] = "SUCCESS"
+        plog.info(f"════════════════════════════════════════")
+        plog.info(f" Pipeline COMPLETED: {run_date} ✓")
+        plog.info(f"════════════════════════════════════════")
+
+    except Exception as exc:
+        summary["status"] = "FAILED"
+        summary["error"]  = str(exc)
+        plog.error(f"Pipeline FAILED for {run_date}: {exc}")
+        raise
+
+    finally:
+        wh.close()
+
+    return summary
+
+
+# ── CLI entrypoint ────────────────────────────────────────────────
+
+def _parse_args():
+    parser = argparse.ArgumentParser(description="Run adstart data pipeline for a specific date.")
     parser.add_argument(
         "--date",
         type=lambda s: date.fromisoformat(s),
-        default=date.today() - timedelta(days=1),
-        help="Date to process (YYYY-MM-DD). Defaults to yesterday.",
+        default=None,
+        help="Run date ISO format YYYY-MM-DD (default: yesterday)",
     )
-    args = parser.parse_args()
-    result = daily_pipeline(run_date=args.date)
-    print(f"\nResult: {result}")
+    parser.add_argument(
+        "--backfill-days",
+        type=int,
+        default=0,
+        help="Re-process last N days (including run_date)",
+    )
+    return parser.parse_args()
+
+
+if __name__ == "__main__":
+    args = _parse_args()
+
+    if args.backfill_days > 0:
+        run_date = args.date or date.today() - timedelta(days=1)
+        dates_to_process = [
+            run_date - timedelta(days=i)
+            for i in range(args.backfill_days - 1, -1, -1)
+        ]
+        print(f"Backfill mode: processing {len(dates_to_process)} dates: "
+              f"{dates_to_process[0]} → {dates_to_process[-1]}")
+        for d in dates_to_process:
+            result = run_pipeline(run_date=d)
+            print(f"  {d}: {result['status']}")
+    else:
+        result = run_pipeline(run_date=args.date)
+        sys.exit(0 if result["status"] == "SUCCESS" else 1)

@@ -1,11 +1,27 @@
-# Core pipeline
-duckdb>=0.10.0,<1.0.0
-prefect>=2.14.0,<3.0.0
-pandas>=2.0.0,<3.0.0
-python-dotenv>=1.0.0
- 
-# AWS migration path (uncomment when deploying to AWS)
-# awswrangler>=3.5.0      # pandas-native S3/Athena I/O
-# boto3>=1.34.0           # AWS SDK
-# pyarrow>=14.0.0         # Parquet read/write
- 
+# ── Core pipeline ────────────────────────────────────────────────
+prefect>=2.16.0,<3.0.0          # Workflow orchestration (scheduler + UI)
+pandas>=2.1.0,<3.0.0            # DataFrame transformations
+numpy>=1.26.0,<2.0.0            # Numeric operations (pandas dependency)
+python-dotenv>=1.0.0            # Load .env file cho settings
+
+# ── AWS SDK + Data Tools ─────────────────────────────────────────
+boto3>=1.34.0,<2.0.0            # AWS SDK — S3, Glue, Athena, SNS, IAM
+awswrangler>=3.5.0,<4.0.0       # AWS SDK cho pandas: S3 Parquet I/O + Athena queries
+                                # (wraps boto3, dependency tự động bao gồm boto3)
+
+# ── Parquet / Columnar Storage ───────────────────────────────────
+pyarrow>=14.0.0,<16.0.0         # Parquet read/write engine (dùng bởi awswrangler)
+fastparquet>=2023.10.0          # Alternative Parquet engine (optional fallback)
+
+# ── Local dev / Testing ──────────────────────────────────────────
+duckdb>=0.10.0,<1.0.0           # Local mode warehouse (không cần AWS khi dev)
+
+# ── Code quality ─────────────────────────────────────────────────
+pytest>=7.4.0
+pytest-mock>=3.12.0             # Mock boto3/S3 calls trong unit tests
+moto[s3,glue,athena]>=4.2.0    # AWS service mocks cho tests (không cần real AWS)
+ruff>=0.1.0                     # Linter + formatter
+mypy>=1.7.0                     # Type checking
+
+# ── Monitoring / Logging ─────────────────────────────────────────
+structlog>=23.2.0               # Structured JSON logging (production)

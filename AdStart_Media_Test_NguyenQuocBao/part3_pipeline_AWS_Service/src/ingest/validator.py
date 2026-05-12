@@ -1,20 +1,26 @@
 """
-src/ingest/validator.py — Data quality checks on freshly loaded staging tables.
+src/ingest/validator.py — Data quality checks on raw DataFrames.
 
-Called after every raw load. Returns a result dict; raises ValueError on critical failures.
-AWS: equivalent checks run as Glue DQ rules or Great Expectations suites.
+LOCAL : kiểm tra trực tiếp trên pandas DataFrame
+AWS   : cùng logic — chạy sau khi read từ S3, trước khi write Parquet
+
+AWS production alternative:
+    - AWS Glue Data Quality (Glue DQ rules) — managed, no code
+    - Great Expectations on Glue — code-based, version-controlled
 """
 from __future__ import annotations
 
 import logging
+from typing import Any
 
-import duckdb
+import pandas as pd
 
 from config.base import settings
 
 logger = logging.getLogger(__name__)
 
-# Key columns that MUST NOT be null (column names match staging table, not raw CSV)
+# ── Required columns per table ────────────────────────────────────
+# Những column này KHÔNG ĐƯỢC null quá threshold
 REQUIRED_COLUMNS: dict[str, list[str]] = {
     "raw_operator_a": ["transaction_id", "event_code", "msisdn", "event_time"],
     "raw_operator_b": ["transaction_id", "transaction_type", "msisdn", "created_at"],
@@ -24,40 +30,45 @@ REQUIRED_COLUMNS: dict[str, list[str]] = {
 }
 
 
-def validate_table(
-    conn: duckdb.DuckDBPyConnection,
-    table: str,
+def validate_dataframe(
+    df: pd.DataFrame,
+    table_name: str,
     required_cols: list[str] | None = None,
-) -> dict:
+) -> dict[str, Any]:
     """
-    Run row-count and null-rate checks on a staging table.
-    Returns a result dict. Raises ValueError if any critical threshold is breached.
-    """
-    cols = required_cols or REQUIRED_COLUMNS.get(table, [])
+    Chạy row-count + null-rate checks trên một DataFrame thô.
 
-    row_count = conn.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+    Returns result dict. Raises ValueError nếu vi phạm critical threshold.
+
+    AWS Glue DQ equivalent:
+        - RowCountConstraint(minRows=1)
+        - CompletenessConstraint("column_X", 0.95)
+    """
+    cols = required_cols or REQUIRED_COLUMNS.get(table_name, [])
+
+    # ── Row count check ──────────────────────────────────────────
+    row_count = len(df)
     if row_count < settings.min_row_count:
-        raise ValueError(f"[{table}] Empty file — {row_count} rows. Pipeline aborted.")
+        raise ValueError(
+            f"[{table_name}] File trống — {row_count} rows. Pipeline dừng."
+        )
 
+    # ── Null rate checks ─────────────────────────────────────────
     warnings: list[str] = []
     for col in cols:
-        try:
-            null_count = conn.execute(f"""
-                SELECT COUNT(*) FROM {table}
-                WHERE "{col}" IS NULL
-                   OR TRIM(CAST("{col}" AS VARCHAR)) = ''
-            """).fetchone()[0]
-            null_rate = null_count / row_count
-            if null_rate > settings.max_null_rate:
-                warnings.append(
-                    f"Column '{col}': {null_rate:.1%} null/empty "
-                    f"(threshold {settings.max_null_rate:.0%})"
-                )
-        except Exception as exc:
-            warnings.append(f"Column '{col}' check error: {exc}")
+        if col not in df.columns:
+            warnings.append(f"Column '{col}' không tồn tại trong DataFrame.")
+            continue
+        null_count = df[col].isna().sum() + (df[col].astype(str).str.strip() == "").sum()
+        null_rate  = null_count / row_count
+        if null_rate > settings.max_null_rate:
+            warnings.append(
+                f"Column '{col}': {null_rate:.1%} null/empty "
+                f"(threshold {settings.max_null_rate:.0%})"
+            )
 
     if warnings:
-        logger.warning(f"[{table}] Quality warnings:\n  " + "\n  ".join(warnings))
+        logger.warning(f"[{table_name}] Quality warnings:\n  " + "\n  ".join(warnings))
 
-    logger.info(f"[{table}] Loaded {row_count:,} rows — checks passed.")
-    return {"table": table, "row_count": row_count, "warnings": warnings}
+    logger.info(f"[{table_name}] Loaded {row_count:,} rows — checks passed.")
+    return {"table": table_name, "row_count": row_count, "warnings": warnings}

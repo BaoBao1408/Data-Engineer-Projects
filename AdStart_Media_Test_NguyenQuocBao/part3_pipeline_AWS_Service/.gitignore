@@ -1,37 +1,34 @@
+# Credentials - KHÔNG BAO GIỜ commit
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+aws-credentials.csv
+
+# Data files
+data/
+logs/
+warehouse/
+*.duckdb
+
 # Python
 __pycache__/
-*.py[cod]
+*.pyc
 *.pyo
-.env
 .venv/
-venv/
 *.egg-info/
+dist/
+build/
+.pytest_cache/
+htmlcov/
+.coverage
 
-# DuckDB warehouse file (contains real data — never commit)
-# *.duckdb
-# *.duckdb.wal
-
-# Logs
-logs/
-*.log
-
-# Data files (raw CSVs contain PII — never commit)
-# data/
-!data/.gitkeep
-
-# Prefect
-.prefect/
+# IDE
+.idea/
+.vscode/
+*.swp
 
 # OS
 .DS_Store
 Thumbs.db
-
-# IDE
-.vscode/
-.idea/
-*.swp
-
-# Test artifacts
-.pytest_cache/
-.coverage
-htmlcov/

@@ -1,116 +1,269 @@
 """
-src/orchestration/quality.py — Final data quality gate.
+src/orchestration/quality.py — Post-build quality assertions.
 
-Runs SQL assertions against mart tables and the quarantine table.
-Raises ValueError if any check fails.
-AWS: Lambda triggered after Glue jobs complete; alerts via SNS on failure.
+LOCAL  : query DuckDB → check assertions trực tiếp trên DataFrame
+AWS    : query Athena → check assertions, gửi SNS alert nếu fail
 
-Quality files executed (each must return 0 rows to pass):
-  1. quality/check_mart.sql          — mart row count, negative revenue, rate bounds
-  2. quality/check_duplicates.sql    — PK uniqueness in fact tables
-  3. quality/check_attribution_rate.sql — Layer 3: operator_C unattributed rate alert
+Checks được run sau mỗi layer build:
+  Layer 0 (Ingest)   : row counts, null rates (trong validator.py)
+  Layer 1 (Facts)    : duplicate primary keys, operator_C attribution rate
+  Layer 2 (Mart)     : mart has rows, no negative revenue, conversion rate sanity
+  Cross-layer        : subscriptions ≤ clicks (basic funnel sanity)
+
+AWS SNS notification:
+    Khi check fail → publish message tới SNS topic → trigger Lambda/email/PagerDuty
 """
 from __future__ import annotations
 
+import json
 import logging
-import re
+from dataclasses import dataclass, field
 from datetime import date
-from pathlib import Path
+from typing import Any
 
-import duckdb
+import pandas as pd
+
+from config.base import settings
+from src.utils.aws_warehouse import AWSWarehouse
 
 logger = logging.getLogger(__name__)
 
-_SQL_DIR = Path(__file__).parent.parent.parent / "sql"
 
-# All quality check files, executed in order.
-# Each file may contain multiple statements separated by ;
-_QUALITY_FILES = [
-    "quality/check_mart.sql",
-    "quality/check_duplicates.sql",
-    "quality/check_attribution_rate.sql",   # Layer 3
-]
+@dataclass
+class QualityResult:
+    check_name:   str
+    passed:       bool
+    failing_rows: int = 0
+    details:      str = ""
+    layer:        str = ""
 
 
-def _split_sql_statements(sql: str) -> list[str]:
+@dataclass
+class QualitySuite:
+    run_date:  date
+    results:   list[QualityResult] = field(default_factory=list)
+
+    @property
+    def passed(self) -> bool:
+        return all(r.passed for r in self.results)
+
+    @property
+    def failures(self) -> list[QualityResult]:
+        return [r for r in self.results if not r.passed]
+
+    def summary(self) -> str:
+        total  = len(self.results)
+        failed = len(self.failures)
+        lines  = [f"Quality Suite {self.run_date}: {total-failed}/{total} checks passed"]
+        for r in self.failures:
+            lines.append(f"  ✗ [{r.layer}] {r.check_name}: {r.failing_rows} failing rows — {r.details}")
+        return "\n".join(lines)
+
+
+# ── Individual checks ─────────────────────────────────────────────
+
+def _check_row_count(
+    wh: AWSWarehouse, table: str, layer: str, run_date: date, min_rows: int = 1
+) -> QualityResult:
+    """Table phải có ít nhất min_rows rows cho ngày run_date."""
+    try:
+        df = wh.query(f"SELECT COUNT(*) AS n FROM {table} WHERE report_date='{run_date}'", layer=layer)
+        n  = int(df["n"].iloc[0])
+        passed = n >= min_rows
+        return QualityResult(
+            check_name=f"{table}_has_rows",
+            passed=passed,
+            failing_rows=0 if passed else 1,
+            details=f"Found {n} rows (min={min_rows})",
+            layer=layer,
+        )
+    except Exception as e:
+        return QualityResult(check_name=f"{table}_has_rows", passed=False,
+                             failing_rows=-1, details=str(e), layer=layer)
+
+
+def _check_no_duplicates(
+    wh: AWSWarehouse, table: str, layer: str, pk_col: str, run_date: date
+) -> QualityResult:
+    """Primary key phải unique trong partition run_date."""
+    try:
+        df = wh.query(f"""
+            SELECT {pk_col}, COUNT(*) AS cnt
+            FROM {table}
+            WHERE report_date = '{run_date}'
+            GROUP BY {pk_col}
+            HAVING COUNT(*) > 1
+        """, layer=layer)
+        n = len(df)
+        return QualityResult(
+            check_name=f"{table}_no_duplicate_{pk_col}",
+            passed=n == 0,
+            failing_rows=n,
+            details=f"{n} duplicate {pk_col} values" if n > 0 else "OK",
+            layer=layer,
+        )
+    except Exception as e:
+        return QualityResult(check_name=f"{table}_no_duplicate_{pk_col}",
+                             passed=False, failing_rows=-1, details=str(e), layer=layer)
+
+
+def _check_no_negative_revenue(wh: AWSWarehouse, run_date: date) -> QualityResult:
+    try:
+        df = wh.query(f"""
+            SELECT COUNT(*) AS n FROM mart_daily_performance
+            WHERE report_date='{run_date}' AND total_revenue < 0
+        """, layer="mart")
+        n = int(df["n"].iloc[0])
+        return QualityResult(
+            check_name="mart_no_negative_revenue",
+            passed=n == 0,
+            failing_rows=n,
+            details=f"{n} rows với negative revenue" if n > 0 else "OK",
+            layer="mart",
+        )
+    except Exception as e:
+        return QualityResult(check_name="mart_no_negative_revenue",
+                             passed=False, failing_rows=-1, details=str(e), layer="mart")
+
+
+def _check_conversion_rates(wh: AWSWarehouse, run_date: date) -> QualityResult:
+    try:
+        df = wh.query(f"""
+            SELECT COUNT(*) AS n FROM mart_daily_performance
+            WHERE report_date='{run_date}'
+              AND (sub_conversion_rate > 1 OR bill_conversion_rate > 1)
+        """, layer="mart")
+        n = int(df["n"].iloc[0])
+        return QualityResult(
+            check_name="mart_conversion_rate_valid",
+            passed=n == 0,
+            failing_rows=n,
+            details=f"{n} rows với conversion rate > 100%" if n > 0 else "OK",
+            layer="mart",
+        )
+    except Exception as e:
+        return QualityResult(check_name="mart_conversion_rate_valid",
+                             passed=False, failing_rows=-1, details=str(e), layer="mart")
+
+
+def _check_subs_not_exceed_clicks(wh: AWSWarehouse, run_date: date) -> QualityResult:
+    """total_subscriptions phải ≤ total_clicks (basic funnel sanity)."""
+    try:
+        df = wh.query(f"""
+            SELECT COUNT(*) AS n FROM mart_daily_performance
+            WHERE report_date='{run_date}'
+              AND total_subscriptions > total_clicks
+        """, layer="mart")
+        n = int(df["n"].iloc[0])
+        return QualityResult(
+            check_name="mart_subs_not_exceed_clicks",
+            passed=n == 0,
+            failing_rows=n,
+            details=f"{n} campaigns có subs > clicks" if n > 0 else "OK",
+            layer="mart",
+        )
+    except Exception as e:
+        return QualityResult(check_name="mart_subs_not_exceed_clicks",
+                             passed=False, failing_rows=-1, details=str(e), layer="mart")
+
+
+def _check_attribution_rate(wh: AWSWarehouse, run_date: date, threshold: float = 0.80) -> QualityResult:
     """
-    Split a SQL file into individual statements, ignoring semicolons inside comments.
-    Filters out comment-only or blank fragments that would cause DuckDB parse errors.
+    operator_C attribution rate phải >= threshold (default 80%).
+    Baseline: ~87% attributed. Alert nếu drop dưới 80% → có thể có SMS parser regression.
     """
-    # Split on ; that are NOT inside a -- comment line
-    statements = []
-    for raw in re.split(r";\s*\n", sql):
-        stmt = raw.strip()
-        if not stmt:
-            continue
-        # Remove comment lines to check if anything executable remains
-        non_comment = "\n".join(
-            line for line in stmt.splitlines()
-            if not line.strip().startswith("--")
-        ).strip()
-        if non_comment:
-            statements.append(stmt)
-    return statements
+    try:
+        df_total = wh.query(f"""
+            SELECT COUNT(*) AS n FROM raw_operator_c
+            WHERE delivery_status='DELIVERED' AND _loaded_date='{run_date}'
+        """, layer="raw")
+        total = int(df_total["n"].iloc[0])
+
+        if total == 0:
+            return QualityResult(check_name="operator_c_attribution_rate",
+                                 passed=True, details="No data for date", layer="facts")
+
+        df_unattr = wh.query(f"""
+            SELECT COUNT(*) AS n FROM fct_unattributed_events
+            WHERE operator='operator_C' AND report_date='{run_date}'
+        """, layer="facts")
+        unattr = int(df_unattr["n"].iloc[0]) if not df_unattr.empty else 0
+
+        rate   = (total - unattr) / total
+        passed = rate >= threshold
+        return QualityResult(
+            check_name="operator_c_attribution_rate",
+            passed=passed,
+            failing_rows=0 if passed else 1,
+            details=f"Attribution rate: {rate:.1%} (threshold {threshold:.0%})",
+            layer="facts",
+        )
+    except Exception as e:
+        return QualityResult(check_name="operator_c_attribution_rate",
+                             passed=False, failing_rows=-1, details=str(e), layer="facts")
 
 
-def run_quality_checks(conn: duckdb.DuckDBPyConnection, run_date: date) -> bool:
+# ── SNS notification ──────────────────────────────────────────────
+
+def _send_sns_alert(suite: QualitySuite) -> None:
+    """Gửi SNS notification khi quality check fail (chỉ AWS mode)."""
+    if not settings.is_aws or not settings.sns_alert_topic_arn:
+        return
+    try:
+        import boto3
+        sns = boto3.client("sns", region_name=settings.aws_region)
+        message = {
+            "pipeline":   "adstart-data-pipeline",
+            "run_date":   str(suite.run_date),
+            "status":     "QUALITY_FAILURE",
+            "failures":   [
+                {"check": r.check_name, "failing_rows": r.failing_rows, "details": r.details}
+                for r in suite.failures
+            ],
+        }
+        sns.publish(
+            TopicArn=settings.sns_alert_topic_arn,
+            Subject=f"[Pipeline Alert] Quality checks failed for {suite.run_date}",
+            Message=json.dumps(message, indent=2),
+        )
+        logger.info(f"SNS alert sent to {settings.sns_alert_topic_arn}")
+    except Exception as e:
+        logger.error(f"Không gửi được SNS alert: {e}")
+
+
+# ── Main quality runner ───────────────────────────────────────────
+
+def run_quality_checks(wh: AWSWarehouse, run_date: date) -> QualitySuite:
     """
-    Execute all quality SQL files and raise ValueError on any assertion failure.
-    Returns True if all checks pass.
+    Chạy toàn bộ quality checks và trả về QualitySuite.
+    Pipeline sẽ raise ValueError nếu có critical check fail.
 
-    A check PASSES when its SELECT returns 0 rows (nothing failing).
-    A check FAILS  when its SELECT returns ≥ 1 row (check_name + failing_rows columns).
+    Checks:
+      Facts layer  : row counts, duplicates, attribution rate
+      Mart layer   : row counts, revenue sanity, conversion rates, funnel sanity
     """
-    failures: list[str] = []
+    suite = QualitySuite(run_date=run_date)
 
-    for sql_file in _QUALITY_FILES:
-        sql_path = _SQL_DIR / sql_file
-        if not sql_path.exists():
-            logger.warning(f"[quality] Check file not found, skipping: {sql_file}")
-            continue
+    logger.info(f"[quality] Running checks for {run_date} ...")
 
-        sql_raw = sql_path.read_text(encoding="utf-8")
-        sql_rendered = sql_raw.replace(":run_date", f"'{run_date}'")
+    # ── Facts layer ───────────────────────────────────────────────
+    suite.results.append(_check_row_count(wh, "fct_subscriptions", "facts", run_date))
+    suite.results.append(_check_no_duplicates(wh, "fct_subscriptions", "facts", "source_transaction_id", run_date))
+    suite.results.append(_check_no_duplicates(wh, "fct_billing", "facts", "source_transaction_id", run_date))
+    suite.results.append(_check_attribution_rate(wh, run_date))
 
-        for stmt in _split_sql_statements(sql_rendered):
-            try:
-                rows = conn.execute(stmt).fetchall()
-                for row in rows:
-                    check_name = row[0] if row else "unknown"
-                    failing    = row[-1] if len(row) > 1 else 0
-                    if failing and int(failing) > 0:
-                        failures.append(f"[{sql_file}] {check_name}: {failing} failing row(s)")
-            except Exception as exc:
-                failures.append(f"[{sql_file}] Execution error: {exc}")
+    # ── Mart layer ────────────────────────────────────────────────
+    suite.results.append(_check_row_count(wh, "mart_daily_performance", "mart", run_date))
+    suite.results.append(_check_no_negative_revenue(wh, run_date))
+    suite.results.append(_check_conversion_rates(wh, run_date))
+    suite.results.append(_check_subs_not_exceed_clicks(wh, run_date))
 
-    if failures:
-        msg = "Quality checks FAILED:\n  " + "\n  ".join(failures)
-        logger.error(msg)
-        # AWS: sns.publish(TopicArn=ALERT_TOPIC, Message=msg, Subject=f"Pipeline FAILED {run_date}")
-        raise ValueError(msg)
+    # ── Log results ───────────────────────────────────────────────
+    summary = suite.summary()
+    if suite.passed:
+        logger.info(summary)
+    else:
+        logger.error(summary)
+        _send_sns_alert(suite)
 
-    # ── Summary on success ─────────────────────────────────────
-    mart_rows = conn.execute(
-        f"SELECT COUNT(*) FROM mart_daily_performance WHERE report_date = '{run_date}'"
-    ).fetchone()[0]
-
-    unattr_rows = conn.execute(
-        f"SELECT COUNT(*) FROM fct_unattributed_events WHERE report_date = '{run_date}'"
-    ).fetchone()[0]
-
-    attr_rate_row = conn.execute(f"""
-        SELECT ROUND(AVG(attribution_rate) * 100, 1)
-        FROM mart_daily_performance
-        WHERE report_date = '{run_date}'
-          AND attribution_rate IS NOT NULL
-    """).fetchone()[0]
-
-    attr_rate_str = f"{attr_rate_row}%" if attr_rate_row is not None else "N/A"
-
-    logger.info(
-        f"All quality checks passed for {run_date}. "
-        f"Mart: {mart_rows} campaign rows | "
-        f"Quarantine: {unattr_rows} unattributed event(s) | "
-        f"Avg attribution rate: {attr_rate_str}"
-    )
-    return True
+    return suite
