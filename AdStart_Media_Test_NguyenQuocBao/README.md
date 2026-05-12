@@ -75,53 +75,84 @@ Operator B only sends `rotate_id` on `SUB` rows. `REN` (renewal) and `UNSUB` row
 ### Schema Design — Modified Star Schema
 
 ```
-dim_campaigns  (campaign metadata — single source of truth)
-      │
-      ├──► fct_clicks          (grain: 1 row per click, with funnel flags)
-      │         │
-      ├──► fct_subscriptions   (grain: 1 row per opt-in, all 3 operators unified)
-      │         │
-      └──► fct_billing         (grain: 1 row per charge, is_first_bill pre-computed)
+[RAW STAGING]                [DIMENSION]            [FACT TABLES]             [MART]
+raw_operator_a  ─┐
+raw_operator_b  ─┤           dim_campaigns  ────►  fct_clicks
+raw_operator_c  ─┤                │          ────►  fct_subscriptions   ────►  mart_daily_performance
+raw_campaigns   ─┤                │          ────►  fct_billing
+raw_clicks      ─┤
+raw_tracking    ─┘
+raw_page_events ─┘
 
-All three ──► mart_daily_performance  (pre-aggregated, refreshed nightly)
+pipeline_runs  (audit log — every step recorded with status, rows_processed, error)
 ```
+
+The full DDL is in `part3_pipeline_production_ready/schema.sql`. Written in DuckDB syntax (PostgreSQL equivalent is near-identical — only `VARCHAR` vs `UUID` type differs; DuckDB stores all IDs as `VARCHAR` to avoid UUID casting overhead on ingestion).
+
+### Tables and Their Roles
+
+| Table | Grain | Key Columns |
+|-------|-------|-------------|
+| `raw_operator_a/b/c` | 1 row per source CSV row | `_loaded_date` partition column added at ingest |
+| `raw_campaigns/clicks/tracking_codes/page_events` | Mirror of source | Typed landing zone before any transformation |
+| `dim_campaigns` | 1 row per campaign | `operator`, `service_name`, `service_model`, `partner_id` |
+| `fct_subscriptions` | 1 row per opt-in | `rotate_id` (nullable for op_c), `attribution_method`, `report_date` |
+| `fct_billing` | 1 row per charge | `is_first_bill`, `billing_sequence`, `subscription_id` (FK to fct_subscriptions) |
+| `fct_clicks` | 1 row per click | `has_page_view/cta_click/entry/subscription/first_bill` (pre-computed funnel flags) |
+| `mart_daily_performance` | 1 row per day × campaign | `sub_conversion_rate`, `bill_conversion_rate`, `total_revenue` |
+| `pipeline_runs` | 1 row per pipeline step execution | `run_id`, `step`, `status`, `rows_processed`, `error_message` |
 
 ### Key Design Decisions
 
-**1. Surrogate keys on fact tables** — each operator uses a different ID format. A generated UUID as the primary key allows true unification without collision risk. `source_transaction_id` retains the original for traceability.
+**1. Explicit raw staging layer** — raw tables mirror the CSV headers exactly (including the `received_time` → `event_time`/`clicked_at`/`created_at` renaming to avoid reserved keyword collision in DuckDB). This means a failed transform never corrupts the source data — re-running is always safe.
 
-**2. `attribution_method` column** — records *how* each subscription was attributed: `direct_rotate_id`, `tracking_code_lookup`, or `unattributed`. This is critical for debugging metric anomalies and giving the business a confidence level on reported numbers.
+**2. `pipeline_runs` audit table** — every step (ingest, transform, load, mart) writes a row with `status`, `rows_processed`, and `error_message`. This gives full observability without needing an external orchestrator to inspect.
 
-**3. Pre-computed flags** — `is_first_bill`, `billing_sequence`, and funnel flags (`has_page_view`, `has_cta_click`, `has_entry`, `has_subscription`, `has_first_bill`) are computed at load time. This converts expensive window function queries into simple `WHERE is_first_bill = TRUE` filters.
+**3. Surrogate keys on fact tables** — each operator uses a different ID format (`transaction_id` for A/B, `message_id` for C). Generated string keys allow true unification. `source_transaction_id` retains the original for traceability.
 
-**4. `report_date` as STORED GENERATED column** — computed once at insert from the timestamp, enabling fast date partitioning with zero overhead at query time.
+**4. `attribution_method` column** — records *how* each subscription was attributed: `direct_rotate_id`, `tracking_code_lookup`, or `unattributed`. Critical for debugging metric anomalies and for giving the business a confidence level on reported numbers.
 
-**5. Denormalized dimension keys** — `operator`, `service_name`, `partner_id` are copied into every fact table. Slicing by any of these axes never requires a join back to `dim_campaigns`.
+**5. Pre-computed flags** — `is_first_bill`, `billing_sequence`, and funnel flags on `fct_clicks` are computed at load time via window functions, then stored. Dashboard queries use `WHERE is_first_bill = TRUE` instead of re-running `ROW_NUMBER() OVER (...)` on every read.
+
+**6. `report_date` as explicit `DATE NOT NULL`** — derived from each timestamp at transform time and stored as a plain `DATE` column. Enables fast date-range filtering and daily aggregation without casting timestamps at query time. (PostgreSQL source DDL uses `GENERATED ALWAYS AS (subscribed_at::DATE) STORED` for the same effect with zero ETL overhead.)
+
+**7. Denormalized dimension keys** — `operator`, `service_name`, `partner_id` are copied into every fact table. Slicing by any of these axes never requires a join back to `dim_campaigns`.
 
 ### Attribution Logic by Operator
 
 ```
-operator_a (event_code=1):
-    rotate_id present → direct insert
+operator_a (event_code=1, status='SUCCESS'):
+    rotate_id always present in source → direct insert to fct_subscriptions
     attribution_method = 'direct_rotate_id'
 
 operator_b (transaction_type='SUB'):
-    rotate_id present → direct insert
+    rotate_id present on SUB rows → direct insert to fct_subscriptions
     attribution_method = 'direct_rotate_id'
 
-    REN rows: no rotate_id — chain via msisdn:
-    REN.msisdn → most recent SUB row ≤ billed_at → subscription_id
+    REN rows (billing): no rotate_id — resolve via msisdn chain:
+    REN.msisdn → most recent SUB row WHERE subscribed_at <= billed_at
+              → inherit subscription_id from that SUB row
+    (edge case: user resubscribes → take MAX(subscribed_at) ≤ billed_at)
 
 operator_c (delivery_status='DELIVERED'):
-    No rotate_id — must look up:
-    tracking_code → JOIN tracking_codes ON code = tracking_code
-                    AND received_time BETWEEN created_at AND expired_at
-    If found:     attribution_method = 'tracking_code_lookup'
-    If not found: attribution_method = 'unattributed'
-                  → row goes to unattributed_events table (not silently dropped)
+    No rotate_id in source. Resolve via:
+    operator_c.tracking_code
+        JOIN raw_tracking_codes tc ON tc.code = operator_c.tracking_code
+            AND operator_c.received_time BETWEEN tc.created_at AND tc.expired_at
+            AND LENGTH(operator_c.tracking_code) = 3   ← critical filter
+    If match found:  rotate_id = tc.rotate_id
+                     attribution_method = 'tracking_code_lookup'
+    If no match:     rotate_id = NULL
+                     attribution_method = 'unattributed'
+                     → row written to unattributed_events (not silently dropped)
+
+Unattributed causes:
+    - tracking_code LENGTH > 3 (96 rows, 13% of operator_c)
+    - code expired (received_time > expired_at = created_at + 30 min)
+    - code not found in tracking_codes at all
 ```
 
-**Unattributed events table** — a dedicated staging table captures every event that cannot be attributed (expired codes, length > 3 chars, orphaned billing). These rows are not lost — they are queryable for monitoring and potential manual recovery.
+**`unattributed_events` table** — rows that cannot be attributed are written here rather than discarded. They remain queryable for monitoring (`attribution_match_rate` metric) and potential manual recovery if the tracking code issue is fixed upstream.
 
 ---
 
@@ -131,41 +162,53 @@ Two versions were built, each representing a stage of maturity.
 
 ### v1 — Working Pipeline (`part3_pipeline/`)
 
-A functional Python pipeline demonstrating the core logic:
-- File ingestion per operator
-- Staging and validation
-- Attribution resolution
+A functional Python pipeline demonstrating the core logic end-to-end:
+- File ingestion per operator into raw staging tables
+- Validation (schema, nulls, domain values)
+- Attribution resolution per operator
 - Fact table population
 
 ### v2 — Production-Ready Pipeline (`part3_pipeline_production_ready/`)
 
-A fully layered, deployable system with the following characteristics:
+A fully layered, deployable system built on the same schema (`schema.sql`) with additional production concerns addressed.
 
-**Architecture — 4 Layers**
+**Architecture — 4 Layers matching the schema**
 
 ```
-[INGEST]     Raw files → staging (schema check, null check, domain validation)
-[TRANSFORM]  Staging → enriched (attribution resolution, sequence computation)
-[LOAD]       Enriched → fact tables (upsert with idempotency key)
-[MART]       Fact tables → mart_daily_performance (nightly aggregation)
+[INGEST]     CSV files ──► raw_operator_a/b/c, raw_campaigns, raw_clicks,
+                           raw_tracking_codes, raw_page_events
+                           (schema check, null check, domain validation at this step)
+
+[TRANSFORM]  raw_* ──► enriched layer
+                       (attribution resolution, billing sequence computation,
+                        funnel flag pre-computation)
+
+[LOAD]       enriched ──► dim_campaigns, fct_clicks, fct_subscriptions, fct_billing
+                          (upsert with idempotency key = operator + source_date + transaction_id)
+
+[MART]       fact tables ──► mart_daily_performance
+                             (nightly aggregation, conversion rates pre-computed)
+
+Every step ──► pipeline_runs (status, rows_processed, error_message logged)
 ```
 
 **Tooling Choices**
 
 | Concern | Choice | Rationale |
 |---------|--------|-----------|
-| Orchestration | Airflow (DAG per operator) | Native retry, SLA alerts, dependency graph, UI for on-call |
-| Transformation | Python + SQLAlchemy | dbt-compatible SQL patterns; avoids heavyweight tooling for 3-operator scope |
-| Storage | PostgreSQL (partitioned by `report_date`) | Fits the current data volume; straightforward to migrate to BigQuery/Redshift |
-| Containerisation | Docker + docker-compose | One-command local run for reviewers; same image to production |
+| Orchestration | Python scheduler + `pipeline_runs` table | Self-contained audit log; no Airflow dependency for this scale; re-runnable from any failed step |
+| Transformation | Python + DuckDB/SQLAlchemy | DuckDB handles CSV → SQL in one step; near-zero setup; same logic portable to Postgres |
+| Storage | DuckDB (local) / PostgreSQL (production) | Schema identical between both; DuckDB for fast local iteration, Postgres for multi-user production access |
+| Containerisation | Docker + docker-compose | One-command local run; same image to production; Postgres service included |
 | Testing | pytest | Unit tests on attribution logic, integration tests on full pipeline run |
 | CI | GitHub Actions | Runs tests on every push; blocks merge on failure |
+| AWS path | S3 (raw) → Glue (catalog) → Athena/Redshift | Documented in `part3_pipeline_AWS_Service/` — same logical layers, different execution engine |
 
-**Idempotency** — every load step uses an `idempotency_key` (`operator + source_date + source_transaction_id`). Running the pipeline twice on the same day is safe — duplicate rows are detected and skipped, not inserted twice.
+**Idempotency** — every load step uses a composite idempotency key (`operator + source_date + source_transaction_id`). Running the pipeline twice on the same day is safe — `INSERT OR IGNORE` / `ON CONFLICT DO NOTHING` prevents duplicate rows.
 
-**Late-arriving files** — the DAG uses a sensor with a configurable timeout. If a file does not arrive by SLA, the sensor times out and raises a critical alert rather than silently skipping. Once the file arrives, the DAG can be manually triggered and the idempotency logic ensures no double-counting.
+**Late-arriving files** — the ingest step checks file presence before proceeding. If a file is missing, the step writes `status = 'failed'` to `pipeline_runs` with `error_message = 'source file not found'` and halts. No downstream step runs against incomplete data. Re-triggering once the file arrives is safe due to idempotency.
 
-**Partial failure recovery** — each layer writes to its own staging table before promoting to facts. A failure mid-pipeline leaves the previous layer intact. Re-running resumes from the failed layer.
+**Partial failure recovery** — because each layer writes to its own raw/staging table before promoting to facts, a failure mid-pipeline leaves prior layers intact. The `pipeline_runs` table records exactly which step failed, so re-running skips already-completed steps and resumes from the failure point.
 
 ---
 
