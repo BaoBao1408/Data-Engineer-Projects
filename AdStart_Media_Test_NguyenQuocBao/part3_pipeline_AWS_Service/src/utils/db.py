@@ -13,7 +13,7 @@ from pathlib import Path
 
 import duckdb
 
-from config.base import settings  # <-- chỉ giữ lại import này
+from config.base import settings
 
 logger = logging.getLogger(__name__)
 

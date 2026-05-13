@@ -1,28 +1,28 @@
 #!/usr/bin/env python3
 """
-run_pipeline.py — Script chạy toàn bộ pipeline từ 0 đến end.
+run_pipeline.py — Script to run the full pipeline end-to-end.
 
-Đây là entry point duy nhất cho daily operations.
-Dùng script này thay vì gọi trực tiếp pipeline.py để có:
+This is the single entry point for daily operations.
+Use this script instead of calling pipeline.py directly to get:
   - Pre-flight checks (AWS credentials, buckets, env vars)
-  - Upload data nếu cần (dev/test mode)
-  - Chạy pipeline
-  - Print summary ra stdout
+  - Data upload if needed (dev/test mode)
+  - Pipeline execution
+  - Summary printed to stdout
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  COMPLETE RUN FLOW (đọc cái này trước khi chạy)
+  COMPLETE RUN FLOW (read this before running)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-  LẦN ĐẦU (chỉ chạy 1 lần):
-  ──────────────────────────
-  1. Cài deps:
+  FIRST TIME (run once only):
+  ───────────────────────────
+  1. Install deps:
        pip install -r requirements_aws.txt
 
   2. Configure AWS CLI:
        aws configure --profile adstart-dev
        export AWS_PROFILE=adstart-dev
 
-  3. Tạo AWS resources:
+  3. Create AWS resources:
        python infrastructure/setup_aws.py \\
          --account-id $(aws sts get-caller-identity --query Account --output text) \\
          --region eu-west-1
@@ -30,19 +30,19 @@ Dùng script này thay vì gọi trực tiếp pipeline.py để có:
   4. Upload sample data:
        python infrastructure/upload_sample_data.py --date 2026-01-15
 
-  5. Chạy pipeline:
+  5. Run pipeline:
        python run_pipeline.py --date 2026-01-15
 
-  HÀNG NGÀY (automated hoặc manual):
-  ───────────────────────────────────
+  DAILY (automated or manual):
+  ─────────────────────────────
   Manual:
-       python run_pipeline.py               # Chạy cho hôm qua
+       python run_pipeline.py               # Run for yesterday
        python run_pipeline.py --date 2026-01-20
 
-  Backfill 7 ngày:
+  Backfill 7 days:
        python run_pipeline.py --backfill-days 7
 
-  Local mode (không cần AWS):
+  Local mode (no AWS required):
        python run_pipeline.py --local --date 2026-01-15
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -73,7 +73,7 @@ BANNER = """
 # ── Pre-flight checks ─────────────────────────────────────────────
 
 def check_aws_credentials() -> bool:
-    """Kiểm tra AWS credentials còn valid."""
+    """Verify that AWS credentials are still valid."""
     try:
         import boto3
         from botocore.exceptions import NoCredentialsError, ClientError
@@ -86,13 +86,13 @@ def check_aws_credentials() -> bool:
         return True
     except Exception as e:
         logger.error(f"  AWS credentials FAIL: {e}")
-        logger.error("  → Chạy: aws configure --profile adstart-dev")
-        logger.error("  → Hoặc set: export AWS_PROFILE=adstart-dev")
+        logger.error("  → Run: aws configure --profile adstart-dev")
+        logger.error("  → Or set: export AWS_PROFILE=adstart-dev")
         return False
 
 
 def check_s3_buckets() -> bool:
-    """Kiểm tra S3 buckets tồn tại và accessible."""
+    """Verify that S3 buckets exist and are accessible."""
     from config.base import settings
     import boto3
     from botocore.exceptions import ClientError
@@ -112,7 +112,7 @@ def check_s3_buckets() -> bool:
             code = e.response["Error"]["Code"]
             if code in ("404", "NoSuchBucket"):
                 logger.error(f"  ✗ {label} NOT FOUND: s3://{bucket_name}/")
-                logger.error(f"    → Chạy: python infrastructure/setup_aws.py --account-id YOUR_ID")
+                logger.error(f"    → Run: python infrastructure/setup_aws.py --account-id YOUR_ID")
             else:
                 logger.error(f"  ✗ {label} error ({code}): {e}")
             all_ok = False
@@ -121,7 +121,7 @@ def check_s3_buckets() -> bool:
 
 
 def check_raw_files_exist(run_date: date) -> bool:
-    """Kiểm tra operator files đã có trên S3 chưa."""
+    """Check whether operator files are already present on S3."""
     from config.base import settings
     import boto3
     from botocore.exceptions import ClientError
@@ -130,7 +130,7 @@ def check_raw_files_exist(run_date: date) -> bool:
     all_ok = True
 
     for op_key, prefix in settings.operator_s3_prefixes.items():
-        key    = f"{prefix}/date={run_date}/data.csv"
+        key = f"{prefix}/date={run_date}/data.csv"
         try:
             s3.head_object(Bucket=settings.raw_bucket, Key=key)
             logger.info(f"  ✓ Found s3://{settings.raw_bucket}/{key}")
@@ -142,11 +142,11 @@ def check_raw_files_exist(run_date: date) -> bool:
 
 
 def preflight_checks(run_date: date, is_aws: bool) -> bool:
-    """Chạy tất cả pre-flight checks. Returns True nếu OK."""
+    """Run all pre-flight checks. Returns True if all pass."""
     logger.info("[ Pre-flight checks ]")
 
     if not is_aws:
-        logger.info("  LOCAL mode — bỏ qua AWS checks.")
+        logger.info("  LOCAL mode — skipping AWS checks.")
         return True
 
     ok = True
@@ -157,8 +157,8 @@ def preflight_checks(run_date: date, is_aws: bool) -> bool:
         files_ok = check_raw_files_exist(run_date)
         if not files_ok:
             logger.warning(
-                "  Một số operator files chưa có trên S3.\n"
-                f"  → Upload bằng: python infrastructure/upload_sample_data.py --date {run_date}"
+                "  Some operator files are not yet on S3.\n"
+                f"  → Upload with: python infrastructure/upload_sample_data.py --date {run_date}"
             )
 
     return ok
@@ -167,7 +167,7 @@ def preflight_checks(run_date: date, is_aws: bool) -> bool:
 # ── Upload helper (dev mode) ──────────────────────────────────────
 
 def maybe_upload_data(run_date: date, auto_upload: bool) -> None:
-    """Upload sample data nếu --upload flag được set."""
+    """Upload sample data if the --upload flag is set."""
     if not auto_upload:
         return
     logger.info("[ Uploading sample data ]")
@@ -187,7 +187,7 @@ def maybe_upload_data(run_date: date, auto_upload: bool) -> None:
 
 def run(run_date: date, is_local: bool, backfill_days: int) -> int:
     """
-    Chạy pipeline và trả về exit code (0=success, 1=failure).
+    Run the pipeline and return an exit code (0=success, 1=failure).
     """
     from src.orchestration.pipeline import run_pipeline
 

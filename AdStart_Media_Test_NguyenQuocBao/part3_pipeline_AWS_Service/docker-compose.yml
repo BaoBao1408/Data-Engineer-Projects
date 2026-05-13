@@ -1,26 +1,35 @@
-version: "3.9"
+# ═══════════════════════════════════════════════════════════════
+#  adstart Pipeline — Environment Variables
+#  Copy this file to .env and fill in the real values
+#  ⚠️  DO NOT commit .env to git (already listed in .gitignore)
+# ═══════════════════════════════════════════════════════════════
 
-services:
-  adstart-pipeline:
-    build:
-      context: .
-      dockerfile: deployment/Dockerfile
+# ── Select environment ──────────────────────────────────────────
+# local = DuckDB + local CSV (for dev/test without AWS)
+# aws   = S3 + Athena + Glue (for production)
+PIPELINE_ENV=local
 
-    container_name: adstart_pipeline
+# ── AWS Settings (only required when PIPELINE_ENV=aws) ──────────
+AWS_REGION=eu-west-1
 
-    volumes:
-      - ./data/raw:/app/data/raw
-      - ./data/warehouse:/app/data/warehouse
-      - ./logs:/app/logs
+# Bucket names — fill in your account ID (12 digits)
+# Retrieve with: aws sts get-caller-identity --query Account --output text
+AWS_RAW_BUCKET=adstart-raw-YOUR_ACCOUNT_ID
+AWS_WAREHOUSE_BUCKET=adstart-warehouse-YOUR_ACCOUNT_ID
+AWS_ATHENA_OUTPUT_BUCKET=adstart-athena-results-YOUR_ACCOUNT_ID
 
-    environment:
-      DB_PATH: /app/data/warehouse/warehouse.duckdb
-      LOG_LEVEL: INFO
+# Glue Catalog databases
+GLUE_RAW_DATABASE=adstart_raw
+GLUE_WAREHOUSE_DATABASE=adstart_warehouse
 
-    command: >
-      sh -c "
-      pytest tests/ -v &&
-      python src/orchestration/pipeline.py --date 2026-01-15
-      "
+# SNS alert topic — fill in the ARN after running setup_aws.py
+# Format: arn:aws:sns:REGION:ACCOUNT_ID:adstart-pipeline-alerts
+SNS_ALERT_TOPIC_ARN=arn:aws:sns:eu-west-1:YOUR_ACCOUNT_ID:adstart-pipeline-alerts
 
-    restart: unless-stopped
+# ── AWS Credentials ─────────────────────────────────────────────
+# OPTION 1 (Recommended): Use IAM role (EC2/ECS/Lambda) → no keys needed
+# OPTION 2: Use a named profile
+# AWS_PROFILE=adstart-dev
+# OPTION 3: Explicit keys (local dev only, never use in production)
+# AWS_ACCESS_KEY_ID=AKIAIOSFODNN7EXAMPLE
+# AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY

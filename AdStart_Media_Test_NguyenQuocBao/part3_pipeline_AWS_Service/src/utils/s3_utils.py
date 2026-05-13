@@ -176,7 +176,7 @@ def write_parquet_to_s3(
     """
     Write a DataFrame to S3 in Parquet format.
 
-    mode="overwrite_partitions" provides idempotent behavior:
+    mode="overwrite_partitions" provides idempotent behaviour:
         - Removes the old partition
         - Writes the new partition
         - Safe for rerunning pipelines for the same date

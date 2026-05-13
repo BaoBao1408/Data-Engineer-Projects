@@ -1,17 +1,17 @@
 """
 src/orchestration/quality.py — Post-build quality assertions.
 
-LOCAL  : query DuckDB → check assertions trực tiếp trên DataFrame
-AWS    : query Athena → check assertions, gửi SNS alert nếu fail
+LOCAL  : query DuckDB → run assertions directly on DataFrames
+AWS    : query Athena → run assertions, send SNS alert on failure
 
-Checks được run sau mỗi layer build:
-  Layer 0 (Ingest)   : row counts, null rates (trong validator.py)
+Checks are run after each layer build:
+  Layer 0 (Ingest)   : row counts, null rates (in validator.py)
   Layer 1 (Facts)    : duplicate primary keys, operator_C attribution rate
   Layer 2 (Mart)     : mart has rows, no negative revenue, conversion rate sanity
   Cross-layer        : subscriptions ≤ clicks (basic funnel sanity)
 
 AWS SNS notification:
-    Khi check fail → publish message tới SNS topic → trigger Lambda/email/PagerDuty
+    On check failure → publish message to SNS topic → trigger Lambda/email/PagerDuty
 """
 from __future__ import annotations
 
@@ -65,7 +65,7 @@ class QualitySuite:
 def _check_row_count(
     wh: AWSWarehouse, table: str, layer: str, run_date: date, min_rows: int = 1
 ) -> QualityResult:
-    """Table phải có ít nhất min_rows rows cho ngày run_date."""
+    """Table must have at least min_rows rows for the given run_date."""
     try:
         df = wh.query(f"SELECT COUNT(*) AS n FROM {table} WHERE report_date='{run_date}'", layer=layer)
         n  = int(df["n"].iloc[0])
@@ -85,7 +85,7 @@ def _check_row_count(
 def _check_no_duplicates(
     wh: AWSWarehouse, table: str, layer: str, pk_col: str, run_date: date
 ) -> QualityResult:
-    """Primary key phải unique trong partition run_date."""
+    """Primary key must be unique within the run_date partition."""
     try:
         df = wh.query(f"""
             SELECT {pk_col}, COUNT(*) AS cnt
@@ -118,7 +118,7 @@ def _check_no_negative_revenue(wh: AWSWarehouse, run_date: date) -> QualityResul
             check_name="mart_no_negative_revenue",
             passed=n == 0,
             failing_rows=n,
-            details=f"{n} rows với negative revenue" if n > 0 else "OK",
+            details=f"{n} rows with negative revenue" if n > 0 else "OK",
             layer="mart",
         )
     except Exception as e:
@@ -138,7 +138,7 @@ def _check_conversion_rates(wh: AWSWarehouse, run_date: date) -> QualityResult:
             check_name="mart_conversion_rate_valid",
             passed=n == 0,
             failing_rows=n,
-            details=f"{n} rows với conversion rate > 100%" if n > 0 else "OK",
+            details=f"{n} rows with conversion rate > 100%" if n > 0 else "OK",
             layer="mart",
         )
     except Exception as e:
@@ -147,7 +147,7 @@ def _check_conversion_rates(wh: AWSWarehouse, run_date: date) -> QualityResult:
 
 
 def _check_subs_not_exceed_clicks(wh: AWSWarehouse, run_date: date) -> QualityResult:
-    """total_subscriptions phải ≤ total_clicks (basic funnel sanity)."""
+    """total_subscriptions must be ≤ total_clicks (basic funnel sanity)."""
     try:
         df = wh.query(f"""
             SELECT COUNT(*) AS n FROM mart_daily_performance
@@ -159,7 +159,7 @@ def _check_subs_not_exceed_clicks(wh: AWSWarehouse, run_date: date) -> QualityRe
             check_name="mart_subs_not_exceed_clicks",
             passed=n == 0,
             failing_rows=n,
-            details=f"{n} campaigns có subs > clicks" if n > 0 else "OK",
+            details=f"{n} campaigns with subs > clicks" if n > 0 else "OK",
             layer="mart",
         )
     except Exception as e:
@@ -169,8 +169,8 @@ def _check_subs_not_exceed_clicks(wh: AWSWarehouse, run_date: date) -> QualityRe
 
 def _check_attribution_rate(wh: AWSWarehouse, run_date: date, threshold: float = 0.80) -> QualityResult:
     """
-    operator_C attribution rate phải >= threshold (default 80%).
-    Baseline: ~87% attributed. Alert nếu drop dưới 80% → có thể có SMS parser regression.
+    operator_C attribution rate must be >= threshold (default 80%).
+    Baseline: ~87% attributed. Alert if it drops below 80% — may indicate an SMS parser regression.
     """
     try:
         df_total = wh.query(f"""
@@ -206,7 +206,7 @@ def _check_attribution_rate(wh: AWSWarehouse, run_date: date, threshold: float =
 # ── SNS notification ──────────────────────────────────────────────
 
 def _send_sns_alert(suite: QualitySuite) -> None:
-    """Gửi SNS notification khi quality check fail (chỉ AWS mode)."""
+    """Send SNS notification when a quality check fails (AWS mode only)."""
     if not settings.is_aws or not settings.sns_alert_topic_arn:
         return
     try:
@@ -228,15 +228,15 @@ def _send_sns_alert(suite: QualitySuite) -> None:
         )
         logger.info(f"SNS alert sent to {settings.sns_alert_topic_arn}")
     except Exception as e:
-        logger.error(f"Không gửi được SNS alert: {e}")
+        logger.error(f"Failed to send SNS alert: {e}")
 
 
 # ── Main quality runner ───────────────────────────────────────────
 
 def run_quality_checks(wh: AWSWarehouse, run_date: date) -> QualitySuite:
     """
-    Chạy toàn bộ quality checks và trả về QualitySuite.
-    Pipeline sẽ raise ValueError nếu có critical check fail.
+    Run all quality checks and return a QualitySuite.
+    The pipeline will raise ValueError if any critical check fails.
 
     Checks:
       Facts layer  : row counts, duplicates, attribution rate

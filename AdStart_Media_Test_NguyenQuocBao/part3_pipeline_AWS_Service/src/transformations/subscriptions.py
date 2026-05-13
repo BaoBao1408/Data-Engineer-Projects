@@ -1,7 +1,7 @@
 """
 src/transformations/subscriptions.py — Build fct_subscriptions + fct_unattributed_events.
 
-Attribution logic per operator (giống y hệt SQL version, ported sang pandas):
+Attribution logic per operator (identical to SQL version, ported to pandas):
   - operator_A: direct rotate_id → clicks → campaign_id
   - operator_B: direct rotate_id (SUB rows only) → clicks → campaign_id
   - operator_C: tracking_code → raw_tracking_codes (30min window) → rotate_id → campaign_id
@@ -9,8 +9,8 @@ Attribution logic per operator (giống y hệt SQL version, ported sang pandas)
 Unattributed operator_C rows → fct_unattributed_events (Layer 1 quarantine)
 
 AWS note:
-    Trước đây dùng DuckDB SQL files. Bây giờ dùng pandas merge/join.
-    Logic hoàn toàn giống nhau — chỉ đổi SQL JOIN → DataFrame merge.
+    Previously used DuckDB SQL files. Now uses pandas merge/join.
+    Logic is identical — SQL JOIN replaced with DataFrame merge.
     awswrangler write → S3 Parquet + Glue Catalog update.
 """
 from __future__ import annotations
@@ -54,7 +54,7 @@ def _build_subs_operator_a(
     ].copy()
 
     if subs_a.empty:
-        logger.info(f"[fct_subscriptions] Không có operator_A subscriptions cho {run_date}")
+        logger.info(f"[fct_subscriptions] No operator_A subscriptions found for {run_date}")
         return pd.DataFrame()
 
     # JOIN: operator_a → clicks (on rotate_id)
@@ -72,18 +72,18 @@ def _build_subs_operator_a(
     )
 
     result = pd.DataFrame({
-        "subscription_id":      [_gen_uuid() for _ in range(len(merged))],
-        "operator":             "operator_A",
+        "subscription_id":       [_gen_uuid() for _ in range(len(merged))],
+        "operator":              "operator_A",
         "source_transaction_id": merged["transaction_id"].values,
-        "rotate_id":            merged["rotate_id"].values,
-        "campaign_id":          merged["campaign_id"].values,
-        "service_name":         merged["service_name"].values,
-        "partner_id":           merged["partner_id"].values,
-        "msisdn":               merged["msisdn"].values,
-        "subscribed_at":        merged["event_time"].values,
-        "report_date":          str(run_date),
-        "attribution_method":   "direct_rotate_id",
-        "loaded_at":            _now_str(),
+        "rotate_id":             merged["rotate_id"].values,
+        "campaign_id":           merged["campaign_id"].values,
+        "service_name":          merged["service_name"].values,
+        "partner_id":            merged["partner_id"].values,
+        "msisdn":                merged["msisdn"].values,
+        "subscribed_at":         merged["event_time"].values,
+        "report_date":           str(run_date),
+        "attribution_method":    "direct_rotate_id",
+        "loaded_at":             _now_str(),
     })
     return result
 
@@ -97,7 +97,7 @@ def _build_subs_operator_b(
     run_date: date,
 ) -> pd.DataFrame:
     """
-    operator_B: transaction_type='SUB' only (REN/UNSUB không có rotate_id)
+    operator_B: transaction_type='SUB' only (REN/UNSUB have no rotate_id)
     Attribution: rotate_id → raw_clicks → campaign_id
     """
     subs_b = df_b[
@@ -107,7 +107,7 @@ def _build_subs_operator_b(
     ].copy()
 
     if subs_b.empty:
-        logger.info(f"[fct_subscriptions] Không có operator_B subscriptions cho {run_date}")
+        logger.info(f"[fct_subscriptions] No operator_B subscriptions found for {run_date}")
         return pd.DataFrame()
 
     merged = subs_b.merge(
@@ -122,18 +122,18 @@ def _build_subs_operator_b(
     )
 
     result = pd.DataFrame({
-        "subscription_id":      [_gen_uuid() for _ in range(len(merged))],
-        "operator":             "operator_B",
+        "subscription_id":       [_gen_uuid() for _ in range(len(merged))],
+        "operator":              "operator_B",
         "source_transaction_id": merged["transaction_id"].values,
-        "rotate_id":            merged["rotate_id"].values,
-        "campaign_id":          merged["campaign_id"].values,
-        "service_name":         merged["service_name"].values,
-        "partner_id":           merged["partner_id"].values,
-        "msisdn":               merged["msisdn"].values,
-        "subscribed_at":        merged["created_at"].values,
-        "report_date":          str(run_date),
-        "attribution_method":   "direct_rotate_id",
-        "loaded_at":            _now_str(),
+        "rotate_id":             merged["rotate_id"].values,
+        "campaign_id":           merged["campaign_id"].values,
+        "service_name":          merged["service_name"].values,
+        "partner_id":            merged["partner_id"].values,
+        "msisdn":                merged["msisdn"].values,
+        "subscribed_at":         merged["created_at"].values,
+        "report_date":           str(run_date),
+        "attribution_method":    "direct_rotate_id",
+        "loaded_at":             _now_str(),
     })
     return result
 
@@ -160,15 +160,15 @@ def _build_subs_operator_c(
     ].copy()
 
     if delivered.empty:
-        logger.info(f"[fct_subscriptions] Không có operator_C DELIVERED rows cho {run_date}")
+        logger.info(f"[fct_subscriptions] No operator_C DELIVERED rows found for {run_date}")
         return pd.DataFrame(), pd.DataFrame()
 
-    # ── Step 1: Tách bad tracking codes ra quarantine ngay ────────
-    bad_mask = delivered["tracking_code"].str.len() > 3
-    bad_rows = delivered[bad_mask].copy()
+    # ── Step 1: Immediately quarantine bad tracking codes ─────────
+    bad_mask  = delivered["tracking_code"].str.len() > 3
+    bad_rows  = delivered[bad_mask].copy()
     good_rows = delivered[~bad_mask].copy()
 
-    # ── Step 2: JOIN với tracking_codes (30-min validity window) ──
+    # ── Step 2: JOIN with tracking_codes (30-min validity window) ─
     # Athena equivalent: ON tc.code = oc.tracking_code
     #                    AND oc.received_time BETWEEN tc.created_at AND tc.expired_at
     merged = good_rows.merge(
@@ -188,7 +188,7 @@ def _build_subs_operator_c(
     matched   = merged[within_window].copy()
     no_window = merged[~within_window & merged["rotate_id"].isna()].copy()
 
-    # ── Step 3: JOIN với clicks → dim_campaigns ───────────────────
+    # ── Step 3: JOIN with clicks → dim_campaigns ──────────────────
     attributed = matched.merge(
         df_clicks[["rotate_id", "campaign_id"]].drop_duplicates("rotate_id"),
         on="rotate_id", how="inner",
@@ -197,7 +197,7 @@ def _build_subs_operator_c(
         on="campaign_id", how="inner",
     )
 
-    # Rows không match clicks
+    # Rows that did not match any click
     no_click = matched[~matched["rotate_id"].isin(attributed["rotate_id"])].copy()
 
     # ── Build attributed DataFrame ────────────────────────────────
@@ -260,12 +260,12 @@ def _build_subs_operator_c(
 
 def build_fct_subscriptions(warehouse: AWSWarehouse, run_date: date) -> int:
     """
-    Merge subscription events từ 3 operators vào fct_subscriptions.
-    Quarantine unattributed operator_C rows vào fct_unattributed_events.
+    Merge subscription events from all 3 operators into fct_subscriptions.
+    Quarantine unattributed operator_C rows into fct_unattributed_events.
 
     IDEMPOTENCY:
-        mode="overwrite_partitions" → xóa partition report_date=run_date
-        trước khi ghi → safe để re-run cùng ngày.
+        mode="overwrite_partitions" → deletes the report_date=run_date partition
+        before writing → safe to re-run for the same date.
     """
     # ── Load raw tables ──────────────────────────────────────────
     df_a   = warehouse.query(f"SELECT * FROM raw_operator_a WHERE _loaded_date='{run_date}'", layer="raw")
@@ -283,7 +283,7 @@ def build_fct_subscriptions(warehouse: AWSWarehouse, run_date: date) -> int:
     # ── Combine + write fct_subscriptions ────────────────────────
     all_subs_frames = [f for f in [df_a_subs, df_b_subs, df_c_subs] if not f.empty]
     if not all_subs_frames:
-        logger.warning(f"[fct_subscriptions] Không có subscriptions nào cho {run_date}")
+        logger.warning(f"[fct_subscriptions] No subscriptions found for {run_date}")
         return 0
 
     df_all_subs = pd.concat(all_subs_frames, ignore_index=True)
@@ -298,7 +298,7 @@ def build_fct_subscriptions(warehouse: AWSWarehouse, run_date: date) -> int:
         total_c     = len(df_c[df_c["delivery_status"] == "DELIVERED"])
         unattr_pct  = len(df_c_quarantine) / total_c * 100 if total_c else 0
         logger.warning(
-            f"[fct_subscriptions] operator_C attribution cho {run_date}: "
+            f"[fct_subscriptions] operator_C attribution for {run_date}: "
             f"{len(df_c_subs) if not df_c_subs.empty else 0}/{total_c} "
             f"attributed ({100-unattr_pct:.1f}%) — "
             f"quarantined {len(df_c_quarantine)} rows."

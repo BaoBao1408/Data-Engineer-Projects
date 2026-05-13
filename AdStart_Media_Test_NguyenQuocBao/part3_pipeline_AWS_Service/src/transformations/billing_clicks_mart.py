@@ -1,8 +1,8 @@
 """
 src/transformations/billing_clicks_mart.py — Build fct_billing, fct_clicks, mart_daily_performance.
 
-Ported từ SQL files (DuckDB) → pandas merge logic.
-Business logic KHÔNG thay đổi — chỉ đổi execution engine.
+Ported from SQL files (DuckDB) → pandas merge logic.
+Business logic is UNCHANGED — only the execution engine has changed.
 
 AWS note:
     fct_billing    → s3://warehouse/facts/fct_billing/report_date=YYYY-MM-DD/
@@ -35,13 +35,13 @@ def _gen_uuids(n: int) -> list[str]:
 
 def build_fct_billing(warehouse: AWSWarehouse, run_date: date) -> int:
     """
-    Build fct_billing từ operator_a (event_code=2) + operator_b (REN rows).
+    Build fct_billing from operator_a (event_code=2) + operator_b (REN rows).
 
-    billing_sequence + is_first_bill tính bằng window function:
+    billing_sequence + is_first_bill are calculated using a window function:
         ROW_NUMBER() OVER (PARTITION BY msisdn, campaign_id ORDER BY billed_at)
 
     Operator A: event_code=2, status=SUCCESS
-    Operator B: transaction_type=REN + SUB (với amount > 0)
+    Operator B: transaction_type=REN + SUB (with amount > 0)
     """
     df_a      = warehouse.query(f"SELECT * FROM raw_operator_a WHERE _loaded_date='{run_date}'", layer="raw")
     df_b      = warehouse.query(f"SELECT * FROM raw_operator_b WHERE _loaded_date='{run_date}'", layer="raw")
@@ -70,9 +70,9 @@ def build_fct_billing(warehouse: AWSWarehouse, run_date: date) -> int:
             on="campaign_id", how="inner"
         )
 
-        # LEFT JOIN với fct_subscriptions để lấy subscription_id
+        # LEFT JOIN with fct_subscriptions to get subscription_id
         if not df_subs.empty:
-            # Lấy subscription gần nhất trước billing time
+            # Get the most recent subscription before the billing time
             subs_a = df_subs[df_subs["operator"] == "operator_A"][
                 ["msisdn", "campaign_id", "subscription_id", "subscribed_at"]
             ].sort_values("subscribed_at")
@@ -81,7 +81,7 @@ def build_fct_billing(warehouse: AWSWarehouse, run_date: date) -> int:
                 on=["msisdn", "campaign_id"],
                 how="left"
             )
-            # Chỉ giữ subscription gần nhất trước billed_at
+            # Keep only the most recent subscription before billed_at
             merged_a["event_time"] = pd.to_datetime(merged_a["event_time"], utc=True, errors="coerce")
             if "sub_at" in merged_a.columns:
                 merged_a["sub_at"] = pd.to_datetime(merged_a["sub_at"], utc=True, errors="coerce")
@@ -164,13 +164,13 @@ def build_fct_billing(warehouse: AWSWarehouse, run_date: date) -> int:
             logger.info(f"[fct_billing] operator_B: {len(df_bills_b):,} billing rows.")
 
     if not frames:
-        logger.warning(f"[fct_billing] Không có billing rows cho {run_date}")
+        logger.warning(f"[fct_billing] No billing rows found for {run_date}")
         return 0
 
     df_billing = pd.concat(frames, ignore_index=True)
     warehouse.write_table(df_billing, layer="facts", table="fct_billing",
                           partition_date=run_date, mode="overwrite_partitions")
-    logger.info(f"[fct_billing] Tổng {len(df_billing):,} rows written for {run_date}.")
+    logger.info(f"[fct_billing] Total {len(df_billing):,} rows written for {run_date}.")
     return len(df_billing)
 
 
@@ -178,16 +178,16 @@ def build_fct_billing(warehouse: AWSWarehouse, run_date: date) -> int:
 
 def build_fct_clicks(warehouse: AWSWarehouse, run_date: date) -> int:
     """
-    Build fct_clicks — denormalized click events với subscription + billing flags.
+    Build fct_clicks — denormalised click events with subscription + billing flags.
 
-    Mỗi row = 1 click event, enriched với:
-      - has_page_view   : click có page_view trong cùng session
-      - has_cta_click   : click có CTA click event
-      - has_entry       : click có entry event (user entered msisdn)
-      - has_subscription: click dẫn đến subscription
-      - has_first_bill  : subscription dẫn đến first billing
+    Each row = 1 click event, enriched with:
+      - has_page_view   : click has a page_view in the same session
+      - has_cta_click   : click has a CTA click event
+      - has_entry       : click has an entry event (user entered msisdn)
+      - has_subscription: click led to a subscription
+      - has_first_bill  : subscription led to a first billing
 
-    Raw clicks không có date partition → filter bằng clicked_at::date = run_date
+    Raw clicks have no date partition → filter by clicked_at::date = run_date
     """
     df_cl  = warehouse.query("SELECT * FROM raw_clicks", layer="raw")
     df_pe  = warehouse.query("SELECT * FROM raw_page_events", layer="raw")
@@ -201,15 +201,15 @@ def build_fct_clicks(warehouse: AWSWarehouse, run_date: date) -> int:
         layer="facts"
     )
 
-    # Filter clicks cho run_date
+    # Filter clicks for run_date
     df_cl["clicked_at"] = pd.to_datetime(df_cl["clicked_at"], utc=True, errors="coerce")
     day_clicks = df_cl[df_cl["clicked_at"].dt.date == run_date].copy()
 
     if day_clicks.empty:
-        logger.warning(f"[fct_clicks] Không có clicks cho {run_date}")
+        logger.warning(f"[fct_clicks] No clicks found for {run_date}")
         return 0
 
-    # JOIN với dim_campaigns
+    # JOIN with dim_campaigns
     day_clicks = day_clicks.merge(
         df_dim[["campaign_id", "operator", "service_name", "partner_id"]],
         on="campaign_id", how="inner"
@@ -286,7 +286,7 @@ def build_fct_clicks(warehouse: AWSWarehouse, run_date: date) -> int:
 
 def build_mart_daily_performance(warehouse: AWSWarehouse, run_date: date) -> int:
     """
-    Pre-aggregated daily performance rollup consumed bởi BI tools.
+    Pre-aggregated daily performance rollup consumed by BI tools.
 
     Granularity: 1 row per (report_date, campaign_id, operator)
 
@@ -306,7 +306,7 @@ def build_mart_daily_performance(warehouse: AWSWarehouse, run_date: date) -> int
     )
 
     if df_clicks.empty:
-        logger.warning(f"[mart_daily_performance] Không có fct_clicks data cho {run_date}")
+        logger.warning(f"[mart_daily_performance] No fct_clicks data found for {run_date}")
         return 0
 
     # ── Aggregate clicks ──────────────────────────────────────────
@@ -328,7 +328,7 @@ def build_mart_daily_performance(warehouse: AWSWarehouse, run_date: date) -> int
         total_first_bills     = ("has_first_bill", "sum"),
     ).reset_index()
 
-    # ── Revenue + renewals từ fct_billing ─────────────────────────
+    # ── Revenue + renewals from fct_billing ───────────────────────
     if not df_billing.empty:
         revenue_agg = df_billing.groupby("campaign_id").agg(
             total_revenue = ("amount", "sum"),

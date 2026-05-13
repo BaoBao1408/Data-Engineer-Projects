@@ -1,16 +1,16 @@
 """
-src/utils/aws_warehouse.py — AWS Storage Layer (thay thế DuckDB).
+src/utils/aws_warehouse.py — AWS Storage Layer (replaces DuckDB).
 
-LOCAL mode  : dùng DuckDB in-memory (giữ nguyên để dev/test không cần AWS)
-AWS mode    : dùng awswrangler + S3 + Athena + Glue Catalog
+LOCAL mode  : uses DuckDB in-memory (kept as-is for dev/test without AWS)
+AWS mode    : uses awswrangler + S3 + Athena + Glue Catalog
 
-Tại sao awswrangler?
-    - Wrapper pandas-native cho S3, Athena, Glue
-    - to_parquet() tự động đăng ký table vào Glue Catalog
-    - read_sql_query() chạy SQL trên Athena, trả về pandas DataFrame
+Why awswrangler?
+    - Pandas-native wrapper for S3, Athena, Glue
+    - to_parquet() automatically registers tables in Glue Catalog
+    - read_sql_query() runs SQL on Athena and returns a pandas DataFrame
     - Partition-aware: mode="overwrite_partitions" = idempotent re-run
 
-Pattern chung:
+Common pattern:
     1. Read  : wr.athena.read_sql_query(sql, database=GLUE_DB) → DataFrame
     2. Write : wr.s3.to_parquet(df, path=S3_PATH, dataset=True,
                                 partition_cols=["report_date"],
@@ -29,21 +29,21 @@ import pandas as pd
 logger = logging.getLogger(__name__)
 
 
-# ── Lazy imports (không cần cài boto3 khi chạy local) ───────────
+# ── Lazy imports (boto3 not required for local runs) ─────────────
 
 def _get_wr():
-    """awswrangler — chỉ import khi AWS mode."""
+    """awswrangler — only imported in AWS mode."""
     try:
         import awswrangler as wr
         return wr
     except ImportError:
         raise ImportError(
-            "awswrangler chưa được cài. Chạy: pip install 'awswrangler>=3.5.0'"
+            "awswrangler is not installed. Run: pip install 'awswrangler>=3.5.0'"
         )
 
 
 def _get_duckdb():
-    """DuckDB — dùng cho local mode."""
+    """DuckDB — used for local mode."""
     import duckdb
     return duckdb
 
@@ -52,16 +52,16 @@ def _get_duckdb():
 
 class AWSWarehouse:
     """
-    Facade thống nhất cho cả LOCAL (DuckDB) và AWS (S3+Athena).
+    Unified facade for both LOCAL (DuckDB) and AWS (S3+Athena).
 
-    Cách dùng:
+    Usage:
         warehouse = AWSWarehouse.from_settings()
 
-        # Write DataFrame → S3 Parquet + đăng ký Glue table
+        # Write DataFrame → S3 Parquet + register Glue table
         warehouse.write_table(df, layer="raw", table="raw_operator_a",
                               partition_date=run_date)
 
-        # Query bằng SQL → DataFrame
+        # Query using SQL → DataFrame
         df = warehouse.query("SELECT * FROM fct_subscriptions WHERE report_date = '2026-01-15'",
                              layer="facts")
 
@@ -109,7 +109,7 @@ class AWSWarehouse:
     def _s3_path(self, layer: str, table: str) -> str:
         """
         layer: "raw" | "dimensions" | "facts" | "mart"
-        Trả về: s3://warehouse-bucket/<layer>/<table>/
+        Returns: s3://warehouse-bucket/<layer>/<table>/
         """
         s = self.settings
         layer_map = {
@@ -119,11 +119,11 @@ class AWSWarehouse:
             "mart":       s.s3_mart_path(table),
         }
         if layer not in layer_map:
-            raise ValueError(f"Unknown layer: {layer}. Chọn: {list(layer_map)}")
+            raise ValueError(f"Unknown layer: {layer}. Choose from: {list(layer_map)}")
         return layer_map[layer]
 
     def _glue_db(self, layer: str) -> str:
-        """Glue database tương ứng với layer."""
+        """Return the Glue database corresponding to the given layer."""
         if layer == "raw":
             return self.settings.glue_raw_database
         return self.settings.glue_warehouse_database
@@ -140,23 +140,23 @@ class AWSWarehouse:
         mode: str = "overwrite_partitions",
     ) -> int:
         """
-        Ghi DataFrame lên S3 dưới dạng Parquet, đăng ký vào Glue Catalog.
+        Write a DataFrame to S3 as Parquet and register it in Glue Catalog.
 
         AWS mode  : awswrangler.s3.to_parquet() → auto-creates Glue table
-        LOCAL mode: INSERT vào DuckDB table tương ứng
+        LOCAL mode: INSERT into the corresponding DuckDB table
 
-        mode="overwrite_partitions" = IDEMPOTENT (xóa partition cũ, ghi lại)
-        = tương đương DELETE WHERE report_date=:run_date + INSERT trong DuckDB
+        mode="overwrite_partitions" = IDEMPOTENT (removes old partition, writes new one)
+        = equivalent to DELETE WHERE report_date=:run_date + INSERT in DuckDB
         """
         if df.empty:
-            logger.warning(f"[{table}] DataFrame trống — bỏ qua ghi.")
+            logger.warning(f"[{table}] DataFrame is empty — skipping write.")
             return 0
 
         if self._is_aws:
             wr = _get_wr()
             s3_path = self._s3_path(layer, table)
 
-            # Partition mặc định theo report_date nếu có
+            # Default partition by report_date if provided
             if not partition_cols and partition_date is not None:
                 df["report_date"] = str(partition_date)
                 partition_cols = ["report_date"]
@@ -179,11 +179,11 @@ class AWSWarehouse:
             return n
 
         else:
-            # LOCAL: insert vào DuckDB
+            # LOCAL: insert into DuckDB
             return self._local_write(df, table, partition_date)
 
     def _local_write(self, df: pd.DataFrame, table: str, partition_date: date | None) -> int:
-        """LOCAL mode: xóa partition cũ rồi append vào DuckDB."""
+        """LOCAL mode: delete old partition then append to DuckDB."""
         if partition_date:
             self._conn.execute(
                 f"DELETE FROM {table} WHERE report_date = '{partition_date}'"
@@ -196,9 +196,9 @@ class AWSWarehouse:
 
     def query(self, sql: str, layer: str = "warehouse") -> pd.DataFrame:
         """
-        Chạy SQL và trả về DataFrame.
+        Run SQL and return a DataFrame.
 
-        AWS mode  : Athena (serverless) — tính phí theo bytes scanned
+        AWS mode  : Athena (serverless) — billed by bytes scanned
         LOCAL mode: DuckDB in-memory
         """
         if self._is_aws:
@@ -214,14 +214,14 @@ class AWSWarehouse:
             return self._conn.execute(sql).df()
 
     def execute(self, sql: str) -> None:
-        """Execute SQL không cần kết quả (chỉ LOCAL mode)."""
+        """Execute SQL with no return value (LOCAL mode only)."""
         if not self._is_aws:
             self._conn.execute(sql)
         else:
-            logger.warning("execute() không dùng trong AWS mode. Dùng query() hoặc write_table().")
+            logger.warning("execute() is not used in AWS mode. Use query() or write_table().")
 
     def count(self, table: str, run_date: date, layer: str = "facts") -> int:
-        """Đếm số rows trong partition của một ngày."""
+        """Count rows in a table's partition for a given date."""
         sql = f"SELECT COUNT(*) AS n FROM {table} WHERE report_date = '{run_date}'"
         df = self.query(sql, layer=layer)
         return int(df["n"].iloc[0])
@@ -229,7 +229,7 @@ class AWSWarehouse:
     # ── boto3 session ────────────────────────────────────────────
 
     def _boto3_session(self):
-        """Tạo boto3 session với region đúng."""
+        """Create a boto3 session with the correct region."""
         import boto3
         return boto3.Session(region_name=self.settings.aws_region)
 
@@ -237,6 +237,6 @@ class AWSWarehouse:
 # ── Convenience factory functions ────────────────────────────────
 
 def get_warehouse() -> AWSWarehouse:
-    """Factory function — dùng thay cho get_connection() của DuckDB cũ."""
+    """Factory function — replaces the old DuckDB get_connection()."""
     wh = AWSWarehouse.from_settings()
     return wh.open()

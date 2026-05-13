@@ -1,5 +1,5 @@
 """
-src/orchestration/pipeline.py — Prefect flow cho adstart data pipeline.
+src/orchestration/pipeline.py — Prefect flow for the adstart data pipeline.
 
 LOCAL  : DuckDB + local CSV files
 AWS    : S3 (raw CSV) → S3 Parquet (warehouse) + Glue Catalog + Athena
@@ -9,10 +9,10 @@ Flow stages:
   2. build_dimensions → dim_campaigns
   3. build_facts      → fct_subscriptions, fct_billing, fct_clicks
   4. build_mart       → mart_daily_performance
-  5. quality_checks   → Assertions, SNS alert if fail
+  5. quality_checks   → Assertions, SNS alert on failure
 
 Idempotency:
-  - Mỗi stage dùng mode="overwrite_partitions" → safe re-run
+  - Each stage uses mode="overwrite_partitions" → safe to re-run
   - Prefect retry decorator → auto-retry on transient S3/Athena errors
 
 Scheduling:
@@ -146,16 +146,16 @@ def run_pipeline(run_date: date | None = None) -> dict:
     Main Prefect flow.
 
     Args:
-        run_date: Ngày cần process. Mặc định = hôm qua (D-1).
+        run_date: Date to process. Defaults to yesterday (D-1).
 
     Returns:
-        Summary dict với row counts cho từng layer.
+        Summary dict with row counts for each layer.
 
     Usage (local):
         python -m src.orchestration.pipeline --date 2026-01-15
 
     Usage (Prefect UI):
-        Tạo deployment → schedule hàng ngày lúc 06:00 UTC
+        Create a deployment → schedule daily at 06:00 UTC
     """
     plog = get_run_logger()
 

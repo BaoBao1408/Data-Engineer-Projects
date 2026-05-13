@@ -21,12 +21,12 @@ on:
   push:
     branches: [main, develop]
     paths:
-      - "part3_pipeline_production_ready/**"
+      - "part3_pipeline_AWS_Service/**"
       - ".github/workflows/ci.yml"
   pull_request:
     branches: [main]
     paths:
-      - "part3_pipeline_production_ready/**"
+      - "part3_pipeline_AWS_Service/**"
 
   # Manual trigger — useful for backfills or prod runs
   workflow_dispatch:
@@ -39,11 +39,11 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/adstart-pipeline
-  WORKING_DIR: part3_pipeline_production_ready
+  WORKING_DIR: part3_pipeline_AWS_Service
 
 defaults:
   run:
-    working-directory: part3_pipeline_production_ready
+    working-directory: part3_pipeline_AWS_Service
 
 jobs:
   # ──────────────────────────────────────────────────────────────

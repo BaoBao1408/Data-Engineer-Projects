@@ -1,30 +1,28 @@
 # Part 3 — adstart Data Pipeline (AWS Edition)
 
 > **DuckDB → S3 + Glue + Athena** | Real-world AWS data pipeline workflow  
-> Mỗi concept đều có giải thích "tại sao" để áp dụng vào công việc thực tế.
+> Every concept includes a "why" explanation for direct application to real work.
 
 ---
 
-## Mục lục
+## Table of Contents
 
 1. [Architecture Overview](#1-architecture-overview)
-2. [AWS Account Setup từ 0](#2-aws-account-setup-từ-0)
+2. [AWS Account Setup from Scratch](#2-aws-account-setup-from-scratch)
 3. [IAM Roles & Security](#3-iam-roles--security)
-4. [Cài đặt môi trường local](#4-cài-đặt-môi-trường-local)
+4. [Local Environment Setup](#4-local-environment-setup)
 5. [Deploy AWS Resources](#5-deploy-aws-resources)
 6. [Run Flow End-to-End](#6-run-flow-end-to-end)
 7. [S3 Data Layout](#7-s3-data-layout)
 8. [Glue + Athena Query Guide](#8-glue--athena-query-guide)
 9. [Monitoring & Alerts](#9-monitoring--alerts)
-10. [So sánh Local vs AWS](#10-so-sánh-local-vs-aws)
+10. [Local vs AWS Comparison](#10-local-vs-aws-comparison)
 11. [Troubleshooting](#11-troubleshooting)
-12. [Chi phí ước tính](#12-chi-phí-ước-tính)
+12. [Estimated Costs](#12-estimated-costs)
 
 ---
 
 ## 1. Architecture Overview
-
-```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        DAILY PIPELINE FLOW                              │
 │                                                                         │
@@ -74,85 +72,73 @@
 │                            │  SNS Alerts  │◀─── Quality Checks ─────┘    │
 │                            └──────────────┘                              │
 └─────────────────────────────────────────────────────────────────────────┘
-```
 
-### Công nghệ stack
+### Technology Stack
 
-| Component    | Local (Dev)   | AWS (Production)      | Tại sao chọn                          |
-|-------------|--------------|----------------------|---------------------------------------|
-| Storage     | Local CSV     | **S3**               | Durability 99.999999999%, cheap       |
-| Warehouse   | DuckDB file   | **S3 Parquet**       | Columnar = fast Athena queries        |
-| Catalog     | —             | **AWS Glue Catalog** | Schema registry, Athena cần để query  |
-| Query engine| DuckDB        | **AWS Athena**       | Serverless SQL, trả tiền per query    |
-| Transform   | pandas        | pandas + awswrangler | Same logic, chỉ đổi I/O layer         |
-| Orchestrate | Prefect local | **Prefect**          | Retry, scheduling, monitoring         |
-| Alerts      | logs          | **SNS + Email**      | Notification khi pipeline fail        |
+| Component    | Local (Dev)   | AWS (Production)      | Why this choice                           |
+|-------------|--------------|----------------------|-------------------------------------------|
+| Storage     | Local CSV     | **S3**               | 99.999999999% durability, cheap           |
+| Warehouse   | DuckDB file   | **S3 Parquet**       | Columnar = fast Athena queries            |
+| Catalog     | —             | **AWS Glue Catalog** | Schema registry, required by Athena       |
+| Query engine| DuckDB        | **AWS Athena**       | Serverless SQL, pay per query             |
+| Transform   | pandas        | pandas + awswrangler | Same logic, only the I/O layer changes    |
+| Orchestrate | Prefect local | **Prefect**          | Retry, scheduling, monitoring             |
+| Alerts      | logs          | **SNS + Email**      | Notifications when pipeline fails         |
 
 ---
 
-## 2. AWS Account Setup từ 0
+## 2. AWS Account Setup from Scratch
 
-### Bước 1 — Tạo tài khoản AWS
+### Step 1 — Create an AWS Account
 
-1. Vào **https://aws.amazon.com** → click **"Create an AWS Account"**
-2. Điền email, tên account, mật khẩu
-3. Chọn plan: **Free Tier** (12 tháng free tier, đủ để practice)
-4. Điền thông tin thanh toán (credit card — chỉ charge nếu vượt free tier)
-5. Xác minh điện thoại → chọn **"Basic support" (free)**
+1. Go to **https://aws.amazon.com** → click **"Create an AWS Account"**
+2. Enter your email, account name, and password
+3. Choose plan: **Free Tier** (12 months free tier, sufficient for practice)
+4. Enter payment details (credit card — only charged if free tier is exceeded)
+5. Verify phone number → select **"Basic support" (free)**
 
-> **Tip**: Đặt tên account có ý nghĩa, ví dụ: `yourname-learning` hoặc `adstart-dev`
+> **Tip**: Give the account a meaningful name, e.g. `yourname-learning` or `adstart-dev`
 
-### Bước 2 — Bảo mật Root account (QUAN TRỌNG)
+### Step 2 — Secure the Root Account (IMPORTANT)
 
-Root account có quyền tuyệt đối — phải khóa ngay sau khi tạo xong.
-
-```
+The root account has absolute permissions — lock it down immediately after creation.
 AWS Console → IAM → Dashboard → Security recommendations
-```
 
-**Checklist bảo mật root:**
+**Root account security checklist:**
 
-- [x] **Enable MFA cho root account** (bắt buộc)
+- [x] **Enable MFA for the root account** (mandatory)
   - IAM → Security credentials → Multi-factor authentication → Assign MFA
-  - Dùng app: Google Authenticator hoặc Authy
+  - Recommended apps: Google Authenticator or Authy
   
-- [x] **Không tạo Access Keys cho root** — dùng IAM users/roles thay thế
+- [x] **Do not create Access Keys for root** — use IAM users/roles instead
   
-- [x] **Set billing alert** (tránh surprise bill)
+- [x] **Set a billing alert** (avoid surprise bills)
   - Billing → Budgets → Create budget
-  - Đặt $10/month alert để biết sớm nếu có chi phí bất thường
+  - Set a $10/month alert to catch unexpected charges early
 
-### Bước 3 — Tạo IAM Admin User cho daily use
+### Step 3 — Create an IAM Admin User for Daily Use
 
-**Không bao giờ dùng root account để làm việc hàng ngày.**
-
-```
+**Never use the root account for day-to-day work.**
 IAM → Users → Create user
-```
 
-**Cấu hình:**
-```
+**Configuration:**
 Username        : adstart-admin
 Access type     : ✅ Provide user access to the AWS Management Console
 Console password: Custom password (strong, 16+ chars)
-MFA             : Enable (bắt buộc)
-
+MFA             : Enable (mandatory)
 Permissions:
-  Attach policies directly:
-  ✅ AdministratorAccess  ← Chỉ dùng cho learning, production cần granular hơn
-```
+Attach policies directly:
+✅ AdministratorAccess  ← Use only for learning; production needs more granular permissions
 
-**Tạo Access Keys cho CLI/SDK:**
-```
+**Create Access Keys for CLI/SDK:**
 IAM → Users → adstart-admin → Security credentials
 → Create access key → "CLI" use case
-→ Download .csv (lưu an toàn, chỉ xem 1 lần)
-```
+→ Download .csv (store safely — only visible once)
 
-### Bước 4 — Configure AWS CLI
+### Step 4 — Configure AWS CLI
 
 ```bash
-# Cài AWS CLI
+# Install AWS CLI
 # macOS
 brew install awscli
 
@@ -163,7 +149,7 @@ unzip awscliv2.zip && sudo ./aws/install
 # Windows
 winget install Amazon.AWSCLI
 
-# Configure với credentials vừa tạo
+# Configure with the credentials just created
 aws configure --profile adstart-dev
 # AWS Access Key ID     : AKIAIOSFODNN7EXAMPLE
 # AWS Secret Access Key : wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
@@ -175,7 +161,7 @@ aws sts get-caller-identity --profile adstart-dev
 # Output:
 # {
 #     "UserId": "AIDAIOSFODNN7EXAMPLE",
-#     "Account": "123456789012",     ← Lưu Account ID này
+#     "Account": "123456789012",     ← Save this Account ID
 #     "Arn": "arn:aws:iam::123456789012:user/adstart-admin"
 # }
 ```
@@ -184,13 +170,13 @@ aws sts get-caller-identity --profile adstart-dev
 
 ## 3. IAM Roles & Security
 
-### Nguyên tắc Least Privilege
+### Principle of Least Privilege
 
-Pipeline chỉ cần quyền vừa đủ — không cần AdministratorAccess khi chạy.
+The pipeline only needs the permissions it requires — AdministratorAccess is not needed at runtime.
 
 ### Pipeline IAM Role (`adstart-pipeline-role`)
 
-Role này được `setup_aws.py` tạo tự động. Giải thích từng permission:
+This role is created automatically by `setup_aws.py`. Each permission is explained below:
 
 ```json
 {
@@ -202,24 +188,24 @@ Role này được `setup_aws.py` tạo tự động. Giải thích từng permi
       "Sid": "S3PipelineAccess",
       "Effect": "Allow",
       "Action": [
-        "s3:GetObject",       // Đọc file từ S3
-        "s3:PutObject",       // Ghi file lên S3
-        "s3:DeleteObject",    // Xóa partition cũ khi overwrite
-        "s3:ListBucket",      // List files (awswrangler cần)
-        "s3:GetBucketLocation"// Xác định region của bucket
+        "s3:GetObject",        // Read files from S3
+        "s3:PutObject",        // Write files to S3
+        "s3:DeleteObject",     // Delete old partition when overwriting
+        "s3:ListBucket",       // List files (required by awswrangler)
+        "s3:GetBucketLocation" // Identify the bucket's region
       ],
       "Resource": [
-        "arn:aws:s3:::adstart-raw-*",        // Raw bucket
+        "arn:aws:s3:::adstart-raw-*",
         "arn:aws:s3:::adstart-raw-*/*",
-        "arn:aws:s3:::adstart-warehouse-*",  // Warehouse bucket
+        "arn:aws:s3:::adstart-warehouse-*",
         "arn:aws:s3:::adstart-warehouse-*/*",
         "arn:aws:s3:::adstart-athena-results-*",
         "arn:aws:s3:::adstart-athena-results-*/*"
       ]
     },
 
-    // Glue: CRUD operations cho Catalog tables
-    // awswrangler.s3.to_parquet() với database= cần những quyền này
+    // Glue: CRUD operations on Catalog tables
+    // awswrangler.s3.to_parquet() with database= requires these permissions
     {
       "Sid": "GlueCatalogAccess",
       "Effect": "Allow",
@@ -235,7 +221,7 @@ Role này được `setup_aws.py` tạo tự động. Giải thích từng permi
       ]
     },
 
-    // Athena: Chạy queries + lấy kết quả
+    // Athena: Run queries + retrieve results
     {
       "Sid": "AthenaAccess",
       "Effect": "Allow",
@@ -247,7 +233,7 @@ Role này được `setup_aws.py` tạo tự động. Giải thích từng permi
       "Resource": "*"
     },
 
-    // SNS: Publish alert khi pipeline fail
+    // SNS: Publish alert when pipeline fails
     {
       "Sid": "SNSPublish",
       "Effect": "Allow",
@@ -258,7 +244,7 @@ Role này được `setup_aws.py` tạo tự động. Giải thích từng permi
 }
 ```
 
-### Trust Policy — Ai được assume role này?
+### Trust Policy — Who can assume this role?
 
 ```json
 {
@@ -266,7 +252,7 @@ Role này được `setup_aws.py` tạo tự động. Giải thích từng permi
     "Effect": "Allow",
     "Principal": {
       "Service": [
-        "ec2.amazonaws.com",         // EC2 instance chạy pipeline
+        "ec2.amazonaws.com",         // EC2 instance running the pipeline
         "ecs-tasks.amazonaws.com",   // ECS container task
         "lambda.amazonaws.com"       // Lambda function trigger
       ]
@@ -276,20 +262,20 @@ Role này được `setup_aws.py` tạo tự động. Giải thích từng permi
 }
 ```
 
-### Bảo mật connection từ local machine
+### Securing the connection from a local machine
 
 ```bash
-# KHÔNG dùng:
-export AWS_ACCESS_KEY_ID=AKIA...      # Hardcode credentials trong shell → nguy hiểm
+# DO NOT use:
+export AWS_ACCESS_KEY_ID=AKIA...      # Hardcoded credentials in shell → dangerous
 
-# KHÔNG dùng:
-# Điền credentials vào code source → commit lên git → leak
+# DO NOT use:
+# Credentials in source code → committed to git → leaked
 
-# NÊN dùng Option 1: Named profile
+# DO use — Option 1: Named profile
 export AWS_PROFILE=adstart-dev
 python -m src.orchestration.pipeline --date 2026-01-15
 
-# NÊN dùng Option 2: Assume role từ profile
+# DO use — Option 2: Assume role from profile
 # ~/.aws/config
 [profile adstart-pipeline]
 role_arn = arn:aws:iam::123456789012:role/adstart-pipeline-role
@@ -298,15 +284,15 @@ region = eu-west-1
 
 export AWS_PROFILE=adstart-pipeline
 
-# NÊN dùng Option 3: Instance Profile (EC2) — tự động, không cần config
+# DO use — Option 3: Instance Profile (EC2) — automatic, no config needed
 # IAM → EC2 → Attach role → adstart-pipeline-role
-# Code chạy trên EC2 tự lấy credentials từ metadata service
+# Code running on EC2 automatically retrieves credentials from the metadata service
 ```
 
-### .gitignore (bắt buộc)
+### .gitignore (mandatory)
 
 ```gitignore
-# KHÔNG BAO GIỜ commit những file này
+# NEVER commit these files
 .env
 .env.*
 !.env.example
@@ -320,7 +306,7 @@ warehouse/
 
 ---
 
-## 4. Cài đặt môi trường local
+## 4. Local Environment Setup
 
 ### Requirements
 
@@ -331,30 +317,30 @@ warehouse/
 ### Setup
 
 ```bash
-# 1. Clone project
+# 1. Clone the project
 git clone <repo-url>
 cd part3_pipeline_aws
 
-# 2. Tạo virtual environment
+# 2. Create a virtual environment
 python3 -m venv .venv
 source .venv/bin/activate          # Linux/macOS
 # .venv\Scripts\activate           # Windows
 
-# 3. Cài dependencies
+# 3. Install dependencies
 pip install -r requirements_aws.txt
 
-# 4. Copy và điền .env
+# 4. Copy and fill in .env
 cp .env.example .env
-# Mở .env và điền:
-#   PIPELINE_ENV=local   ← Bắt đầu với local để test trước
-#   (AWS settings để trống khi local mode)
+# Open .env and set:
+#   PIPELINE_ENV=local   ← Start with local to test first
+#   (Leave AWS settings blank for local mode)
 
-# 5. Test local mode (không cần AWS)
+# 5. Test local mode (no AWS required)
 make run-local
-# hoặc
+# or
 PIPELINE_ENV=local python -m src.orchestration.pipeline --date 2026-01-15
 
-# 6. Chạy tests
+# 6. Run tests
 make test-unit
 ```
 
@@ -362,14 +348,14 @@ make test-unit
 
 ## 5. Deploy AWS Resources
 
-### Lần đầu setup (chạy 1 lần)
+### First-time setup (run once)
 
 ```bash
-# Bước 1: Lấy Account ID
+# Step 1: Get Account ID
 export ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 echo "Account ID: $ACCOUNT_ID"
 
-# Bước 2: Preview trước (dry run — không tạo gì cả)
+# Step 2: Preview first (dry run — creates nothing)
 make setup-aws-dry ACCOUNT_ID=$ACCOUNT_ID REGION=eu-west-1
 
 # Output:
@@ -379,111 +365,90 @@ make setup-aws-dry ACCOUNT_ID=$ACCOUNT_ID REGION=eu-west-1
 # [DRY-RUN] Would create IAM role: adstart-pipeline-role
 # ...
 
-# Bước 3: Tạo resources thật (sau khi đã review dry run)
+# Step 3: Create real resources (after reviewing the dry run)
 make setup-aws ACCOUNT_ID=$ACCOUNT_ID REGION=eu-west-1
 
-# Bước 4: .env được tạo tự động — kiểm tra lại
+# Step 4: .env is created automatically — review it
 cat .env
 
-# Bước 5: Switch sang AWS mode
-# Sửa .env: PIPELINE_ENV=aws
+# Step 5: Switch to AWS mode
+# Edit .env: PIPELINE_ENV=aws
 ```
 
-### Resources được tạo
-
-```
+### Resources created
 S3 Buckets:
-  adstart-raw-123456789012          ← Raw CSV từ operators
-  adstart-warehouse-123456789012    ← Parquet warehouse
-  adstart-athena-results-123456789012 ← Athena query results
-
+adstart-raw-123456789012              ← Raw CSV from operators
+adstart-warehouse-123456789012        ← Parquet warehouse
+adstart-athena-results-123456789012   ← Athena query results
 Glue Databases:
-  adstart_raw          ← Raw tables (Parquet)
-  adstart_warehouse    ← Facts + Mart tables
-
+adstart_raw          ← Raw tables (Parquet)
+adstart_warehouse    ← Facts + Mart tables
 IAM:
-  Role: adstart-pipeline-role
-  Policy: adstart-pipeline-policy (inline)
-
+Role: adstart-pipeline-role
+Policy: adstart-pipeline-policy (inline)
 SNS:
-  Topic: adstart-pipeline-alerts
-```
+Topic: adstart-pipeline-alerts
 
 ---
 
 ## 6. Run Flow End-to-End
 
-### Toàn bộ flow từ 0 đến end
-
-```
+### Full flow from 0 to end
 ┌─────────────────────────────────────────────────────────┐
 │  STEP-BY-STEP GUIDE: 0 → Production Pipeline on AWS     │
 └─────────────────────────────────────────────────────────┘
-
-NGÀY 1: AWS Account + Setup
+DAY 1: AWS Account + Setup
 ═══════════════════════════
-
-Step 0: Tạo AWS account + IAM admin user + MFA
-  → https://aws.amazon.com → Create Account
-
+Step 0: Create AWS account + IAM admin user + MFA
+→ https://aws.amazon.com → Create Account
 Step 1: Configure AWS CLI
-  → aws configure --profile adstart-dev
-
+→ aws configure --profile adstart-dev
 Step 2: Clone project + install deps
-  → git clone ... && pip install -r requirements_aws.txt
-
-Step 3: Setup AWS resources
-  → make setup-aws ACCOUNT_ID=123456789012
-
+→ git clone ... && pip install -r requirements_aws.txt
+Step 3: Set up AWS resources
+→ make setup-aws ACCOUNT_ID=123456789012
 Step 4: Upload sample data
-  → make upload-data RUN_DATE=2026-01-15
-
-Step 5: Chạy pipeline lần đầu
-  → make run RUN_DATE=2026-01-15
-
-Step 6: Query kết quả trong Athena console
-
-NGÀY 2+: Daily operations
+→ make upload-data RUN_DATE=2026-01-15
+Step 5: Run pipeline for the first time
+→ make run RUN_DATE=2026-01-15
+Step 6: Query results in the Athena console
+DAY 2+: Daily operations
 ════════════════════════
-
-# Chạy thủ công
-make run                              # Default: hôm qua
-make run RUN_DATE=2026-01-20         # Ngày cụ thể
-
-# Backfill 7 ngày
+Run manually
+make run                              # Default: yesterday
+make run RUN_DATE=2026-01-20          # Specific date
+Backfill 7 days
 make backfill DAYS=7
-
-# Monitor
+Monitor
 make logs                             # CloudWatch logs
-```
 
-### Chi tiết từng bước
+### Step-by-step details
 
-#### Bước 1 — Verify environment
+#### Step 1 — Verify environment
 
 ```bash
-# Kiểm tra AWS credentials
+# Check AWS credentials
 aws sts get-caller-identity
 # {
 #   "Account": "123456789012",
 #   "Arn": "arn:aws:iam::123456789012:user/adstart-admin"
 # }
 
-# Kiểm tra buckets đã tồn tại
+# Check buckets exist
 aws s3 ls | grep adstart
 # 2026-01-15 10:00:00 adstart-raw-123456789012
 # 2026-01-15 10:00:00 adstart-warehouse-123456789012
 # 2026-01-15 10:00:00 adstart-athena-results-123456789012
 
-# Kiểm tra .env
+# Check .env
 cat .env | grep PIPELINE_ENV
 # PIPELINE_ENV=aws
 ```
 
-#### Bước 2 — Upload sample data lên S3
+#### Step 2 — Upload sample data to S3
 
 ```bash
-# Upload tất cả files cho ngày 2026-01-15
+# Upload all files for 2026-01-15
 make upload-data RUN_DATE=2026-01-15
 
 # Output:
@@ -496,11 +461,11 @@ make upload-data RUN_DATE=2026-01-15
 #   ✓ Uploaded tracking_codes.csv
 #   ✓ Uploaded page_events.csv
 
-# Verify trên S3
+# Verify on S3
 make ls-raw RUN_DATE=2026-01-15
 ```
 
-#### Bước 3 — Run pipeline
+#### Step 3 — Run pipeline
 
 ```bash
 make run RUN_DATE=2026-01-15
@@ -526,7 +491,7 @@ make run RUN_DATE=2026-01-15
 #
 # [ Stage 3/5 ] Building fact tables ...
 #   [fct_subscriptions] 892 rows inserted for 2026-01-15.
-#   [fct_billing] Tổng 445 rows written for 2026-01-15.
+#   [fct_billing] Total 445 rows written for 2026-01-15.
 #   [fct_clicks] 3,218 rows written for 2026-01-15.
 #
 # [ Stage 4/5 ] Building mart tables ...
@@ -540,15 +505,15 @@ make run RUN_DATE=2026-01-15
 # ════════════════════════════════════════
 ```
 
-#### Bước 4 — Verify trên S3 + Athena
+#### Step 4 — Verify on S3 + Athena
 
 ```bash
-# List files trên S3
+# List files on S3
 make ls-warehouse RUN_DATE=2026-01-15
 # s3://adstart-warehouse-123456789012/facts/fct_subscriptions/report_date=2026-01-15/...parquet
 # s3://adstart-warehouse-123456789012/mart/mart_daily_performance/report_date=2026-01-15/...parquet
 
-# Query Athena (AWS Console hoặc CLI)
+# Query Athena (AWS Console or CLI)
 aws athena start-query-execution \
   --query-string "SELECT campaign_id, total_clicks, total_subscriptions, total_revenue
                   FROM mart_daily_performance
@@ -558,37 +523,31 @@ aws athena start-query-execution \
   --result-configuration OutputLocation=s3://adstart-athena-results-123456789012/
 ```
 
-#### Bước 5 — Kiểm tra Athena Console
-
-```
+#### Step 5 — Check results in the Athena Console
 AWS Console → Athena → Query editor
-  Database: adstart_warehouse
-
-  SELECT
-    report_date,
-    campaign_id,
-    operator,
-    total_clicks,
-    total_subscriptions,
-    sub_conversion_rate,
-    total_revenue
-  FROM mart_daily_performance
-  WHERE report_date = '2026-01-15'
-  ORDER BY total_revenue DESC;
-```
+Database: adstart_warehouse
+SELECT
+report_date,
+campaign_id,
+operator,
+total_clicks,
+total_subscriptions,
+sub_conversion_rate,
+total_revenue
+FROM mart_daily_performance
+WHERE report_date = '2026-01-15'
+ORDER BY total_revenue DESC;
 
 ---
 
 ## 7. S3 Data Layout
-
-```
 s3://adstart-raw-123456789012/
 │
 ├── operator_a/
 │   ├── date=2026-01-14/
 │   │   └── data.csv
 │   └── date=2026-01-15/
-│       └── data.csv         ← Hive partition format (Athena tự detect)
+│       └── data.csv         ← Hive partition format (auto-detected by Athena)
 │
 ├── operator_b/
 │   └── date=2026-01-15/
@@ -599,11 +558,10 @@ s3://adstart-raw-123456789012/
 │       └── data.csv
 │
 └── static/
-    ├── campaigns.csv
-    ├── clicks.csv
-    ├── tracking_codes.csv
-    └── page_events.csv
-
+├── campaigns.csv
+├── clicks.csv
+├── tracking_codes.csv
+└── page_events.csv
 s3://adstart-warehouse-123456789012/
 │
 ├── raw/                              ← Layer 0: Raw Parquet (validated)
@@ -628,22 +586,21 @@ s3://adstart-warehouse-123456789012/
 │   └── fct_unattributed_events/
 │
 └── mart/                             ← Layer 3: Aggregated mart
-    └── mart_daily_performance/
-        └── report_date=2026-01-15/
-            └── part-0000.parquet
-```
+└── mart_daily_performance/
+└── report_date=2026-01-15/
+└── part-0000.parquet
 
 ---
 
 ## 8. Glue + Athena Query Guide
 
-### Xem tables trong Athena Console
+### Viewing tables in the Athena Console
 
 ```sql
--- List tất cả tables trong warehouse database
+-- List all tables in the warehouse database
 SHOW TABLES IN adstart_warehouse;
 
--- Xem schema của fct_subscriptions
+-- View the schema of fct_subscriptions
 DESCRIBE adstart_warehouse.fct_subscriptions;
 
 -- Query mart
@@ -659,7 +616,7 @@ FROM adstart_warehouse.mart_daily_performance
 WHERE report_date = '2026-01-15'
 ORDER BY total_revenue DESC;
 
--- Revenue theo operator theo tuần
+-- Revenue by operator by week
 SELECT
     DATE_TRUNC('week', CAST(report_date AS DATE)) AS week_start,
     operator,
@@ -670,7 +627,7 @@ WHERE report_date >= '2026-01-01'
 GROUP BY 1, 2
 ORDER BY 1, 3 DESC;
 
--- Attribution rate của operator_C
+-- operator_C attribution rate
 SELECT
     e.report_date,
     COUNT(*) AS unattributed_events,
@@ -686,24 +643,24 @@ WHERE e.report_date = '2026-01-15'
 GROUP BY 1, r.total_delivered;
 ```
 
-### Tối ưu Athena queries (tiết kiệm chi phí)
+### Optimising Athena queries (cost savings)
 
 ```sql
--- ✅ LUÔN filter theo partition column trước
+-- ✅ ALWAYS filter by the partition column first
 SELECT * FROM fct_subscriptions
-WHERE report_date = '2026-01-15'    -- Filter partition → chỉ scan 1 file
+WHERE report_date = '2026-01-15'    -- Partition filter → scans only 1 file
 
--- ❌ Tránh full table scan
-SELECT * FROM fct_subscriptions     -- Scan TẤT CẢ partitions = tốn tiền
+-- ❌ Avoid full table scans
+SELECT * FROM fct_subscriptions     -- Scans ALL partitions = expensive
 WHERE YEAR(subscribed_at) = 2026
 
--- ✅ SELECT chỉ cột cần thiết (Parquet columnar = chỉ scan cột được select)
+-- ✅ SELECT only the columns you need (Parquet is columnar = only selected columns are scanned)
 SELECT subscription_id, msisdn, campaign_id
 FROM fct_subscriptions
 WHERE report_date = '2026-01-15'
 
--- ❌ Tránh SELECT *
-SELECT * FROM fct_subscriptions     -- Scan tất cả cột
+-- ❌ Avoid SELECT *
+SELECT * FROM fct_subscriptions     -- Scans all columns
 ```
 
 ---
@@ -712,7 +669,7 @@ SELECT * FROM fct_subscriptions     -- Scan tất cả cột
 
 ### SNS Email Alerts
 
-Pipeline tự động gửi alert khi quality check fail:
+The pipeline automatically sends an alert when a quality check fails:
 
 ```json
 {
@@ -732,10 +689,10 @@ Pipeline tự động gửi alert khi quality check fail:
 ### CloudWatch Logs
 
 ```bash
-# Stream logs realtime
+# Stream logs in real time
 make logs
 
-# Filter errors
+# Filter for errors
 aws logs filter-log-events \
   --log-group-name /aws/adstart-pipeline/pipeline \
   --filter-pattern "ERROR"
@@ -743,29 +700,29 @@ aws logs filter-log-events \
 
 ---
 
-## 10. So sánh Local vs AWS
+## 10. Local vs AWS Comparison
 
-| Aspect         | Local (DuckDB)          | AWS (S3+Athena)              |
-|---------------|------------------------|------------------------------|
-| Startup cost  | 0                       | ~5 phút setup               |
-| Per-run cost  | 0                       | ~$0.01-0.05/day             |
-| Data size     | Giới hạn RAM/disk       | Unlimited                   |
-| Query speed   | Nhanh (in-process)      | 1-10s latency               |
-| Concurrency   | Single process          | Nhiều queries song song     |
-| Sharing data  | Phải copy file          | Share Athena query          |
-| Durability    | Local disk              | 99.999999999%               |
-| Dev workflow  | Instant feedback        | Upload → wait               |
+| Aspect         | Local (DuckDB)          | AWS (S3+Athena)               |
+|---------------|------------------------|-------------------------------|
+| Startup cost  | 0                       | ~5 minutes setup              |
+| Per-run cost  | 0                       | ~$0.01–0.05/day               |
+| Data size     | Limited by RAM/disk     | Unlimited                     |
+| Query speed   | Fast (in-process)       | 1–10s latency                 |
+| Concurrency   | Single process          | Multiple parallel queries     |
+| Sharing data  | Must copy files         | Share an Athena query         |
+| Durability    | Local disk              | 99.999999999%                 |
+| Dev workflow  | Instant feedback        | Upload → wait                 |
 
-**Khi nào dùng Local mode:**
+**When to use Local mode:**
 - Development + unit tests
-- Prototype transformation logic
+- Prototyping transformation logic
 - CI/CD pipeline checks
 
-**Khi nào dùng AWS mode:**
-- Data > 1GB
-- Multiple analysts cần query cùng lúc
-- Production pipeline với scheduling
-- Audit trail + data versioning cần thiết
+**When to use AWS mode:**
+- Data > 1 GB
+- Multiple analysts need to query simultaneously
+- Production pipeline with scheduling
+- Audit trail + data versioning required
 
 ---
 
@@ -773,67 +730,66 @@ aws logs filter-log-events \
 
 ### `NoCredentialsError`
 ```bash
-# Nguyên nhân: AWS credentials chưa config
+# Cause: AWS credentials not configured
 aws configure --profile adstart-dev
-# Hoặc: kiểm tra .env có AWS_PROFILE chưa
+# Or: check whether AWS_PROFILE is set in .env
 ```
 
 ### `NoSuchBucket`
 ```bash
-# Nguyên nhân: Chưa chạy setup_aws.py
+# Cause: setup_aws.py has not been run yet
 make setup-aws ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
 ```
 
-### `Glue table không tồn tại` trong Athena
+### `Glue table does not exist` in Athena
 ```bash
-# awswrangler tự tạo table khi write_table() chạy lần đầu
-# Nếu vẫn lỗi, chạy lại pipeline và check logs
+# awswrangler creates the table automatically on the first write_table() call
+# If the error persists, re-run the pipeline and check the logs
 make run RUN_DATE=2026-01-15
 ```
 
-### `AccessDenied` khi write S3
+### `AccessDenied` when writing to S3
 ```bash
-# Kiểm tra IAM policy có đủ quyền không
+# Check whether the IAM policy grants sufficient permissions
 aws iam simulate-principal-policy \
   --policy-source-arn arn:aws:iam::ACCOUNT_ID:role/adstart-pipeline-role \
   --action-names s3:PutObject \
   --resource-arns arn:aws:s3:::adstart-warehouse-ACCOUNT_ID/*
 ```
 
-### Athena query fail `HIVE_PARTITION_SCHEMA_MISMATCH`
+### Athena query fails with `HIVE_PARTITION_SCHEMA_MISMATCH`
 ```bash
-# Xảy ra khi schema thay đổi sau khi table đã tồn tại
-# Chạy MSCK REPAIR TABLE trong Athena console:
+# Occurs when the schema changes after the table already exists
+# Run MSCK REPAIR TABLE in the Athena console:
 MSCK REPAIR TABLE adstart_warehouse.fct_subscriptions;
 ```
 
 ---
 
-## 12. Chi phí ước tính
+## 12. Estimated Costs
 
-Với volume sample data (~1-5MB/ngày):
+With sample data volume (~1–5 MB/day):
 
-| Service     | Usage                    | Cost/month  |
-|------------|--------------------------|-------------|
-| S3 Storage | ~150MB/tháng             | ~$0.003     |
-| S3 Requests| ~10K PUT/GET requests    | ~$0.05      |
-| Athena     | ~10 queries × 5MB/query  | ~$0.002     |
-| Glue Catalog| Miễn phí đến 1M objects | $0.00       |
-| SNS        | <1K messages/tháng       | $0.00       |
-| **Total**  |                          | **< $0.10** |
+| Service      | Usage                     | Cost/month  |
+|-------------|---------------------------|-------------|
+| S3 Storage  | ~150 MB/month             | ~$0.003     |
+| S3 Requests | ~10K PUT/GET requests     | ~$0.05      |
+| Athena      | ~10 queries × 5 MB/query  | ~$0.002     |
+| Glue Catalog| Free up to 1M objects     | $0.00       |
+| SNS         | <1K messages/month        | $0.00       |
+| **Total**   |                           | **< $0.10** |
 
-> **Free Tier** (12 tháng đầu): S3 5GB + 20K GET requests, đủ để practice thoải mái.
+> **Free Tier** (first 12 months): S3 5 GB + 20K GET requests — more than enough for practice.
 
 ---
 
 ## Project Structure
-
 ```
 part3_pipeline_aws/
-├── .env.example                    ← Copy → .env, điền values
+├── .env.example                    ← Copy → .env and fill in values
 ├── .gitignore
-├── Makefile                        ← Tất cả commands
-├── README.md                       ← File này
+├── Makefile                        ← All commands in one place
+├── README.md                       ← This file
 ├── requirements_aws.txt
 │
 ├── config/
@@ -852,15 +808,15 @@ part3_pipeline_aws/
 │   │
 │   ├── orchestration/
 │   │   ├── pipeline.py             ← Prefect flow (main entrypoint)
-│   │   └── quality.py             ← Post-build assertions + SNS alerts
+│   │   └── quality.py              ← Post-build assertions + SNS alerts
 │   │
 │   └── utils/
 │       ├── aws_warehouse.py        ← AWSWarehouse (S3+Athena facade)
 │       └── s3_utils.py             ← S3 helper functions
 │
 ├── infrastructure/
-│   ├── setup_aws.py                ← Tạo S3, Glue, IAM, SNS
-│   ├── upload_sample_data.py       ← Upload CSV lên S3
+│   ├── setup_aws.py                ← Create S3, Glue, IAM, SNS
+│   ├── upload_sample_data.py       ← Upload CSVs to S3
 │   └── teardown_aws.py             ← Cleanup (dev only)
 │
 └── tests/
