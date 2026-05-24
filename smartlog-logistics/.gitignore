@@ -5,3 +5,4 @@
 .env
 *.pfx
 appsettings.*.local.json
+**/.vite/*
