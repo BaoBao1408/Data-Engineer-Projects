@@ -13,6 +13,7 @@ using Shared.Auth;
 using Shared.Config;
 using System.Text;
 using OrderService.Services;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // ── Bind config sections ──────────────────────────────────
