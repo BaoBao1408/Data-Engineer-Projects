@@ -1,0 +1,10 @@
+1. Mở Docker Desktop → đợi xanh
+2. Cài Node.js → restart VSCode
+3. docker-compose up -d zookeeper kafka   ← chỉ cần Kafka thôi, DB dùng local pgAdmin
+4. cd C:\Projects\Data-Engineer-Projects\smartlog-logistics\OrderService
+dotnet run
+5. cd C:\Projects\Data-Engineer-Projects\smartlog-logistics\TrackingService
+dotnet run
+6. cd C:\Projects\Data-Engineer-Projects\smartlog-logistics\react-frontend
+npm install
+npm run dev

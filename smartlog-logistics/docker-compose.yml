@@ -1,0 +1,231 @@
+version: '3.9'
+
+networks:
+  smartlog-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  kafka_data:
+  zookeeper_data:
+
+services:
+
+  # ═══════════════════════════════════════════════════════════
+  # INFRASTRUCTURE LAYER
+  # ═══════════════════════════════════════════════════════════
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: smartlog-postgres
+    env_file: .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-smartlog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartlog123}
+      POSTGRES_DB: ${POSTGRES_DB:-smartlog}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - smartlog-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartlog}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: smartlog-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+      ZOOKEEPER_LOG4J_ROOT_LOGLEVEL: WARN
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks:
+      - smartlog-net
+    healthcheck:
+      test: ["CMD", "nc", "-z", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: smartlog-kafka
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    ports:
+      - "9092:9092"
+      - "29092:29092"   # External access for local dev
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092,PLAINTEXT_HOST://localhost:29092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      KAFKA_LOG_RETENTION_HOURS: 168
+      KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    networks:
+      - smartlog-net
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: smartlog-kafka-ui
+    depends_on:
+      kafka:
+        condition: service_healthy
+    ports:
+      - "8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: smartlog-cluster
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:9092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+    networks:
+      - smartlog-net
+
+  # ═══════════════════════════════════════════════════════════
+  # APPLICATION LAYER
+  # ═══════════════════════════════════════════════════════════
+
+  order-service:
+    build:
+      context: .
+      dockerfile: OrderService/Dockerfile
+    container_name: smartlog-order-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "5001:8080"
+    env_file: .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: >
+        Host=postgres;Port=5432;Database=orderdb;
+        Username=${POSTGRES_USER:-smartlog};Password=${POSTGRES_PASSWORD:-smartlog123}
+      Kafka__BootstrapServers: kafka:9092
+      Jwt__Secret: ${JWT_SECRET:-dev-secret-key-min-32-characters-long!!}
+      Jwt__Issuer: ${JWT_ISSUER:-smartlog-api}
+      Jwt__Audience: ${JWT_AUDIENCE:-smartlog-frontend}
+      AWS__AccessKeyId: ${AWS_ACCESS_KEY_ID:-}
+      AWS__SecretAccessKey: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS__Region: ${AWS_REGION:-ap-southeast-1}
+      AWS__S3Bucket: ${AWS_S3_BUCKET:-smartlog-logistics-files}
+    networks:
+      - smartlog-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  tracking-service:
+    build:
+      context: .
+      dockerfile: TrackingService/Dockerfile
+    container_name: smartlog-tracking-service
+    depends_on:
+      postgres:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+    ports:
+      - "5002:8080"
+    env_file: .env
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__DefaultConnection: >
+        Host=postgres;Port=5432;Database=trackingdb;
+        Username=${POSTGRES_USER:-smartlog};Password=${POSTGRES_PASSWORD:-smartlog123}
+      Kafka__BootstrapServers: kafka:9092
+      Jwt__Secret: ${JWT_SECRET:-dev-secret-key-min-32-characters-long!!}
+      Jwt__Issuer: ${JWT_ISSUER:-smartlog-api}
+      Jwt__Audience: ${JWT_AUDIENCE:-smartlog-frontend}
+    networks:
+      - smartlog-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ═══════════════════════════════════════════════════════════
+  # GATEWAY LAYER
+  # ═══════════════════════════════════════════════════════════
+
+  nginx:
+    image: nginx:alpine
+    container_name: smartlog-gateway
+    depends_on:
+      - order-service
+      - tracking-service
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    networks:
+      - smartlog-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/nginx-health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # ═══════════════════════════════════════════════════════════
+  # FRONTEND PLACEHOLDER (uncomment when ready)
+  # ═══════════════════════════════════════════════════════════
+
+  # angular-app:
+  #   build:
+  #     context: ./frontend-angular
+  #     dockerfile: Dockerfile
+  #   container_name: smartlog-frontend
+  #   ports:
+  #     - "4200:80"
+  #   environment:
+  #     - API_URL=http://nginx/api
+  #   networks:
+  #     - smartlog-net
+  #   depends_on:
+  #     - nginx
+
+  # ═══════════════════════════════════════════════════════════
+  # FRONTEND — uncomment when ready
+  # ═══════════════════════════════════════════════════════════
+
+  # angular-frontend:
+  #   build:
+  #     context: ./frontend-angular
+  #     dockerfile: Dockerfile
+  #   container_name: smartlog-angular
+  #   ports:
+  #     - "4200:80"
+  #   networks:
+  #     - smartlog-net
+  #   depends_on:
+  #     - nginx
