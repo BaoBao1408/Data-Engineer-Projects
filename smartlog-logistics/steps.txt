@@ -1,6 +1,23 @@
 1. Mở Docker Desktop → đợi xanh
 2. Cài Node.js → restart VSCode
-3. docker-compose up -d zookeeper kafka   ← chỉ cần Kafka thôi, DB dùng local pgAdmin
+3. docker-compose up -d zookeeper kafka postgres kafka-ui  
+docker ps --format "table {{.Names}}\t{{.Status}}" - check docker healthy
+
+create Kafka Topics: 
+docker exec smartlog-kafka kafka-topics --create `
+  --bootstrap-server localhost:9092 `
+  --topic order.created `
+  --partitions 3 `
+  --replication-factor 1
+
+docker exec smartlog-kafka kafka-topics --create `
+  --bootstrap-server localhost:9092 `
+  --topic order.status.updated `
+  --partitions 3 `
+  --replication-factor 1
+
+Verify: docker exec smartlog-kafka kafka-topics --list --bootstrap-server localhost:9092
+
 4. cd C:\Projects\Data-Engineer-Projects\smartlog-logistics\OrderService
 dotnet run
 5. cd C:\Projects\Data-Engineer-Projects\smartlog-logistics\TrackingService
@@ -23,24 +40,6 @@ jsonPOST /api/auth/login
 { "username": "admin", "password": "smartlog123" }
 Copy token trả về → bấm Authorize trên Swagger → paste vào.
 
-docker exec smartlog-kafka kafka-topics --create `
-  --bootstrap-server localhost:9092 `
-  --topic order.created `
-  --partitions 3 `
-  --replication-factor 1
-
-docker exec smartlog-kafka kafka-topics --create `
-  --bootstrap-server localhost:9092 `
-  --topic order.status.updated `
-  --partitions 3 `
-  --replication-factor 1
-
-Verify:
-powershelldocker exec smartlog-kafka kafka-topics --list --bootstrap-server localhost:9092
-Phải thấy:
-order.created
-order.status.updated
-
 Bước 2 — Tạo đơn hàng:
 jsonPOST /api/orders
 {
@@ -52,12 +51,45 @@ jsonPOST /api/orders
     { "productName": "Laptop", "quantity": 1, "weight": 2.5 }
   ]
 }
-Bước 3 — Mở Kafka UI http://localhost:8090 → xem topic order.created có message chưa
+{
+  "customerName": "Morgan",
+  "customerPhone": "123456879",
+  "originAddress": "Quy Nhon City",
+  "destinationAddress": "Phu Quoc",
+  "items": [
+    {
+      "productName": "toy",
+      "quantity": 200,
+      "weight": 13
+    },
+    {
+      "productName": "screen",
+      "quantity": 500,
+      "weight": 123
+    }
+  ]
+}
+Bước 3 — Mở Kafka UI http://localhost:8090 (Kafka UI): → Kiểm tra Kafka event
+
+Topics → order.created → Messages
+Phải thấy message với key = orderCode vừa tạo 
+
 Bước 4 — Check TrackingService tự tạo record:
 GET http://localhost:5002/api/tracking/{orderCode}
-Bước 5 — Update status → xem Kafka event mới:
-jsonPATCH /api/orders/{id}/status
-{ "status": "Confirmed" }
+
+BƯỚC 5 — Check Tracking tự động update
+Vào http://localhost:5002/swagger
+GET /api/tracking/{orderCode} → điền orderCode vào → Execute
+Phải thấy tracking timeline với event ORDER_CREATED
+
+Bước 6 — Update status → xem Kafka event mới trigger kafka lan 2:
+Về http://localhost:5001/swagger
+PATCH /api/orders/{id}/status
+{
+  "status": "InTransit",
+  "note": "Pending"
+}
+
 3. Test React Frontend
 Mở http://localhost:3000:
 

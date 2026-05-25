@@ -23,6 +23,7 @@ public class KafkaConsumerService : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
+        await Task.Yield();
         var consumerConfig = new ConsumerConfig
         {
             BootstrapServers = _config["Kafka:BootstrapServers"] ?? "localhost:9092",
