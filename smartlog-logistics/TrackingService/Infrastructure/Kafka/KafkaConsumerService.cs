@@ -14,7 +14,14 @@ public class KafkaConsumerService : BackgroundService
     private readonly IConfiguration _config;
     private readonly ILogger<KafkaConsumerService> _logger;
 
-    public KafkaConsumerService(IServiceScopeFactory scopeFactory, IConfiguration config, ILogger<KafkaConsumerService> logger)
+    // Fix: thêm PropertyNameCaseInsensitive phòng trường hợp JSON case mismatch
+    private static readonly JsonSerializerOptions _jsonOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
+
+    public KafkaConsumerService(IServiceScopeFactory scopeFactory, IConfiguration config,
+        ILogger<KafkaConsumerService> logger)
     {
         _scopeFactory = scopeFactory;
         _config = config;
@@ -24,9 +31,13 @@ public class KafkaConsumerService : BackgroundService
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         await Task.Yield();
+
+        var bootstrapServers = _config["Kafka:BootstrapServers"] ?? "localhost:29092";
+        _logger.LogInformation("🔧 Kafka BootstrapServers = {Servers}", bootstrapServers);
+
         var consumerConfig = new ConsumerConfig
         {
-            BootstrapServers = _config["Kafka:BootstrapServers"] ?? "localhost:9092",
+            BootstrapServers = bootstrapServers,
             GroupId = "tracking-service-group",
             AutoOffsetReset = AutoOffsetReset.Earliest,
             EnableAutoCommit = false
@@ -45,7 +56,9 @@ public class KafkaConsumerService : BackgroundService
                 var result = consumer.Consume(TimeSpan.FromMilliseconds(500));
                 if (result == null) continue;
 
-                _logger.LogInformation("📨 Received message from [{Topic}]: {Key}", result.Topic, result.Message.Key);
+                _logger.LogInformation("📨 Received [{Topic}] partition={P} offset={O} key={Key}",
+                    result.Topic, result.Partition.Value, result.Offset.Value, result.Message.Key);
+                _logger.LogDebug("📦 Raw JSON: {Json}", result.Message.Value);
 
                 using var scope = _scopeFactory.CreateScope();
                 var db = scope.ServiceProvider.GetRequiredService<TrackingDbContext>();
@@ -56,6 +69,7 @@ public class KafkaConsumerService : BackgroundService
                     await HandleOrderStatusUpdated(db, result.Message.Value);
 
                 consumer.Commit(result);
+                _logger.LogInformation("✔️ Committed offset {O} partition {P}", result.Offset.Value, result.Partition.Value);
             }
             catch (ConsumeException ex)
             {
@@ -64,7 +78,7 @@ public class KafkaConsumerService : BackgroundService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "❌ Unexpected error in consumer");
+                _logger.LogError(ex, "❌ Unexpected error: {Msg}", ex.Message);
                 await Task.Delay(2000, stoppingToken);
             }
         }
@@ -74,12 +88,20 @@ public class KafkaConsumerService : BackgroundService
 
     private async Task HandleOrderCreated(TrackingDbContext db, string json)
     {
-        var evt = JsonSerializer.Deserialize<OrderCreatedEvent>(json)!;
+        var evt = JsonSerializer.Deserialize<OrderCreatedEvent>(json, _jsonOptions);
+
+        if (evt == null || evt.OrderId == Guid.Empty)
+        {
+            _logger.LogError("❌ Deserialize failed or empty OrderId. Raw: {Json}", json);
+            return;
+        }
+
+        _logger.LogInformation("🔍 Processing order.created: {OrderCode} ({OrderId})", evt.OrderCode, evt.OrderId);
 
         var existing = await db.TrackingRecords.FirstOrDefaultAsync(t => t.OrderId == evt.OrderId);
         if (existing != null)
         {
-            _logger.LogWarning("Tracking record already exists for order {OrderId}", evt.OrderId);
+            _logger.LogWarning("⚠️ TrackingRecord already exists for {OrderId}", evt.OrderId);
             return;
         }
 
@@ -99,12 +121,18 @@ public class KafkaConsumerService : BackgroundService
 
         db.TrackingRecords.Add(record);
         await db.SaveChangesAsync();
-        _logger.LogInformation("✅ Tracking record created for {OrderCode}", evt.OrderCode);
+        _logger.LogInformation("✅ TrackingRecord created for {OrderCode}", evt.OrderCode);
     }
 
     private async Task HandleOrderStatusUpdated(TrackingDbContext db, string json)
     {
-        var evt = JsonSerializer.Deserialize<OrderStatusUpdatedEvent>(json)!;
+        var evt = JsonSerializer.Deserialize<OrderStatusUpdatedEvent>(json, _jsonOptions);
+
+        if (evt == null || evt.OrderId == Guid.Empty)
+        {
+            _logger.LogError("❌ Deserialize failed. Raw: {Json}", json);
+            return;
+        }
 
         var record = await db.TrackingRecords
             .Include(t => t.Events)
@@ -112,7 +140,7 @@ public class KafkaConsumerService : BackgroundService
 
         if (record == null)
         {
-            _logger.LogWarning("No tracking record found for order {OrderId}", evt.OrderId);
+            _logger.LogWarning("⚠️ No tracking record found for {OrderId}", evt.OrderId);
             return;
         }
 

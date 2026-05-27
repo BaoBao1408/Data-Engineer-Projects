@@ -53,6 +53,7 @@ builder.Services.AddSingleton<IKafkaProducer, KafkaProducer>();
 // ── Business Layer ────────────────────────────────────────
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService.Services.OrderService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // ── JWT ───────────────────────────────────────────────────
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -118,10 +119,31 @@ builder.Services.AddSwaggerGen(c =>
 var app = builder.Build();
 
 // Auto-run EF migrations
+// using (var scope = app.Services.CreateScope())
+// {
+//     var db = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
+//     db.Database.Migrate();
+// }
+
+// Seed admin account nếu chưa có user nào
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<OrderDbContext>();
     db.Database.Migrate();
+
+    // ← THÊM ĐOẠN NÀY
+    if (!db.Users.Any())
+    {
+        db.Users.Add(new OrderService.Models.AppUser
+        {
+            Username = "admin",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("smartlog123"),
+            Role = "Admin",
+            FullName = "System Admin"
+        });
+        await db.SaveChangesAsync();
+        // Từ giờ tạo user mới qua API POST /api/auth/users
+    }
 }
 
 // ── Pipeline ──────────────────────────────────────────────

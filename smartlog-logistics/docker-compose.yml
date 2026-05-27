@@ -5,7 +5,6 @@ networks:
     driver: bridge
 
 volumes:
-  postgres_data:
   kafka_data:
   zookeeper_data:
 
@@ -15,27 +14,18 @@ services:
   # INFRASTRUCTURE LAYER
   # ═══════════════════════════════════════════════════════════
 
-  postgres:
-    image: postgres:16-alpine
-    container_name: smartlog-postgres
-    env_file: .env
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-smartlog}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-smartlog123}
-      POSTGRES_DB: ${POSTGRES_DB:-smartlog}
+  react-frontend:
+    build:
+      context: ./react-frontend
+      dockerfile: Dockerfile
+    container_name: smartlog-frontend
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - "3000:80"
+    depends_on:
+      - nginx
     networks:
       - smartlog-net
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-smartlog}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
+    restart: unless-stopped
 
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
@@ -63,7 +53,7 @@ services:
         condition: service_healthy
     ports:
       - "9092:9092"
-      - "29092:29092"   # External access for local dev
+      - "29092:29092"
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
@@ -73,16 +63,21 @@ services:
       KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
       KAFKA_LOG_RETENTION_HOURS: 168
       KAFKA_LOG4J_ROOT_LOGLEVEL: WARN
+      # ✅ FIX: Đảm bảo coordinator ready nhanh hơn
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
     volumes:
       - kafka_data:/var/lib/kafka/data
     networks:
       - smartlog-net
     healthcheck:
-      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      # ✅ FIX: healthcheck mạnh hơn — kiểm tra cả topic metadata, không chỉ broker API
+      test: ["CMD-SHELL", "kafka-broker-api-versions --bootstrap-server localhost:9092 && kafka-topics --bootstrap-server localhost:9092 --list"]
       interval: 15s
       timeout: 10s
       retries: 10
-      start_period: 30s
+      start_period: 45s
 
   kafka-ui:
     image: provectuslabs/kafka-ui:latest
@@ -109,8 +104,6 @@ services:
       dockerfile: OrderService/Dockerfile
     container_name: smartlog-order-service
     depends_on:
-      postgres:
-        condition: service_healthy
       kafka:
         condition: service_healthy
     ports:
@@ -119,10 +112,14 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
+      # PostgreSQL: trỏ vào local PostgreSQL trên máy Windows
       ConnectionStrings__DefaultConnection: >
-        Host=postgres;Port=5432;Database=orderdb;
-        Username=${POSTGRES_USER:-smartlog};Password=${POSTGRES_PASSWORD:-smartlog123}
+        Host=host.docker.internal;Port=5432;Database=orderdb;
+        Username=postgres;Password=123456
       Kafka__BootstrapServers: kafka:9092
+      # ✅ FIX: Tắt idempotence để tránh lỗi "Failed to acquire idempotence PID"
+      # Idempotent producer cần TRANSACTION coordinator fully loaded — gây race condition lúc startup
+      Kafka__EnableIdempotence: "false"
       Jwt__Secret: ${JWT_SECRET:-dev-secret-key-min-32-characters-long!!}
       Jwt__Issuer: ${JWT_ISSUER:-smartlog-api}
       Jwt__Audience: ${JWT_AUDIENCE:-smartlog-frontend}
@@ -134,11 +131,12 @@ services:
       - smartlog-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      # ✅ FIX: tăng start_period để Kafka coordinator đủ thời gian load
+      start_period: 60s
 
   tracking-service:
     build:
@@ -146,8 +144,6 @@ services:
       dockerfile: TrackingService/Dockerfile
     container_name: smartlog-tracking-service
     depends_on:
-      postgres:
-        condition: service_healthy
       kafka:
         condition: service_healthy
     ports:
@@ -156,9 +152,10 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
+      # PostgreSQL: trỏ vào local PostgreSQL trên máy Windows
       ConnectionStrings__DefaultConnection: >
-        Host=postgres;Port=5432;Database=trackingdb;
-        Username=${POSTGRES_USER:-smartlog};Password=${POSTGRES_PASSWORD:-smartlog123}
+        Host=host.docker.internal;Port=5432;Database=trackingdb;
+        Username=postgres;Password=123456
       Kafka__BootstrapServers: kafka:9092
       Jwt__Secret: ${JWT_SECRET:-dev-secret-key-min-32-characters-long!!}
       Jwt__Issuer: ${JWT_ISSUER:-smartlog-api}
@@ -167,11 +164,11 @@ services:
       - smartlog-net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 60s
 
   # ═══════════════════════════════════════════════════════════
   # GATEWAY LAYER
@@ -197,25 +194,7 @@ services:
       retries: 3
 
   # ═══════════════════════════════════════════════════════════
-  # FRONTEND PLACEHOLDER (uncomment when ready)
-  # ═══════════════════════════════════════════════════════════
-
-  # angular-app:
-  #   build:
-  #     context: ./frontend-angular
-  #     dockerfile: Dockerfile
-  #   container_name: smartlog-frontend
-  #   ports:
-  #     - "4200:80"
-  #   environment:
-  #     - API_URL=http://nginx/api
-  #   networks:
-  #     - smartlog-net
-  #   depends_on:
-  #     - nginx
-
-  # ═══════════════════════════════════════════════════════════
-  # FRONTEND — uncomment when ready
+  # FRONTEND Angular (uncomment khi cần)
   # ═══════════════════════════════════════════════════════════
 
   # angular-frontend:

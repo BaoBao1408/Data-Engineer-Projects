@@ -9,7 +9,7 @@ public class OrderDbContext : DbContext
 
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderItem> OrderItems => Set<OrderItem>();
-
+    public DbSet<AppUser> Users => Set<AppUser>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Order>(entity =>
@@ -26,6 +26,16 @@ public class OrderDbContext : DbContext
                   .OnDelete(DeleteBehavior.Cascade);
         });
 
+        modelBuilder.Entity<AppUser>(entity =>
+        {
+            entity.HasKey(u => u.Id);
+            entity.Property(u => u.Username).IsRequired().HasMaxLength(100);
+            entity.HasIndex(u => u.Username).IsUnique(); // username không được trùng
+            entity.Property(u => u.PasswordHash).IsRequired();
+            entity.Property(u => u.Role).IsRequired().HasMaxLength(50);
+            entity.Property(u => u.FullName).HasMaxLength(200);
+        });
+        
         modelBuilder.Entity<OrderItem>(entity =>
         {
             entity.HasKey(i => i.Id);

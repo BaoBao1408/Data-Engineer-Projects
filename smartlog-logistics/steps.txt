@@ -3,6 +3,10 @@
 3. docker-compose up -d zookeeper kafka postgres kafka-ui  
 docker ps --format "table {{.Names}}\t{{.Status}}" - check docker healthy
 
+otnet ef migrations add AddUserTable
+>> dotnet ef database update
+
+
 create Kafka Topics: 
 docker exec smartlog-kafka kafka-topics --create `
   --bootstrap-server localhost:9092 `
@@ -15,6 +19,14 @@ docker exec smartlog-kafka kafka-topics --create `
   --topic order.status.updated `
   --partitions 3 `
   --replication-factor 1
+
+docker exec -it smartlog-kafka kafka-consumer-groups `
+  --bootstrap-server localhost:9092 `
+  --group tracking-service-group `
+  --reset-offsets `
+  --to-earliest `
+  --all-topics `
+  --execute
 
 Verify: docker exec smartlog-kafka kafka-topics --list --bootstrap-server localhost:9092
 

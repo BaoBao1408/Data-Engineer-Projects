@@ -2,12 +2,10 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy csproj files and restore (layer cache optimization)
 COPY Shared/Shared.csproj Shared/
 COPY OrderService/OrderService.csproj OrderService/
 RUN dotnet restore OrderService/OrderService.csproj
 
-# Copy source and build
 COPY Shared/ Shared/
 COPY OrderService/ OrderService/
 RUN dotnet publish OrderService/OrderService.csproj -c Release -o /app/publish
@@ -16,7 +14,9 @@ RUN dotnet publish OrderService/OrderService.csproj -c Release -o /app/publish
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
 
-# Non-root user for security
+# curl cho healthcheck — phải ở runtime stage, trước khi switch user
+RUN apt-get update && apt-get install -y curl --no-install-recommends && rm -rf /var/lib/apt/lists/*
+
 RUN adduser --disabled-password --gecos '' appuser && chown -R appuser /app
 USER appuser
 
