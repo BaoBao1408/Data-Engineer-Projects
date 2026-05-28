@@ -1,0 +1,152 @@
+name: CD – Build & Deploy to Azure
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*.*.*"]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: staging
+        type: choice
+        options: [staging, production]
+
+env:
+  REGISTRY: ${{ secrets.ACR_LOGIN_SERVER }}         # e.g. edpregistry.azurecr.io
+  AKS_CLUSTER: ${{ secrets.AKS_CLUSTER_NAME }}
+  AKS_RESOURCE_GROUP: ${{ secrets.AKS_RESOURCE_GROUP }}
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ─── Build & Push Docker Images ───────────────────────────────────────────
+  build-and-push:
+    name: Build & Push to Azure Container Registry
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+    outputs:
+      image_tag: ${{ steps.meta.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/edp
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-,format=short
+
+      - name: Login to Azure Container Registry
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.ACR_LOGIN_SERVER }}
+          username:     ${{ secrets.ACR_USERNAME }}
+          password:     ${{ secrets.ACR_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build & Push API image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.api
+          push: true
+          tags: ${{ env.REGISTRY }}/edp-api:${{ steps.meta.outputs.version }},${{ env.REGISTRY }}/edp-api:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/edp-api:buildcache
+          cache-to:   type=registry,ref=${{ env.REGISTRY }}/edp-api:buildcache,mode=max
+          build-args: |
+            BUILD_DATE=${{ github.run_id }}
+            VCS_REF=${{ github.sha }}
+            VERSION=${{ steps.meta.outputs.version }}
+
+      - name: Build & Push Ingestion image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile.ingestion
+          push: true
+          tags: ${{ env.REGISTRY }}/edp-ingestion:${{ steps.meta.outputs.version }},${{ env.REGISTRY }}/edp-ingestion:latest
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/edp-ingestion:buildcache
+          cache-to:   type=registry,ref=${{ env.REGISTRY }}/edp-ingestion:buildcache,mode=max
+
+  # ─── Run Migrations ───────────────────────────────────────────────────────
+  run-migrations:
+    name: Run DB Migrations
+    runs-on: ubuntu-latest
+    needs: [build-and-push]
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install migration deps
+        run: pip install alembic psycopg2-binary
+
+      - name: Run Alembic migrations
+        run: alembic upgrade head
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ─── Deploy to AKS ────────────────────────────────────────────────────────
+  deploy-to-aks:
+    name: Deploy to Azure Kubernetes Service
+    runs-on: ubuntu-latest
+    needs: [build-and-push, run-migrations]
+    environment: ${{ github.event.inputs.environment || 'staging' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set AKS context
+        uses: azure/aks-set-context@v3
+        with:
+          resource-group: ${{ env.AKS_RESOURCE_GROUP }}
+          cluster-name:   ${{ env.AKS_CLUSTER }}
+
+      - name: Set image tag in manifests
+        run: |
+          TAG=${{ needs.build-and-push.outputs.image_tag }}
+          sed -i "s|IMAGE_TAG|${TAG}|g" infrastructure/k8s/*.yaml
+
+      - name: Deploy to AKS
+        uses: azure/k8s-deploy@v4
+        with:
+          namespace: edp-${{ github.event.inputs.environment || 'staging' }}
+          manifests: |
+            infrastructure/k8s/api-deployment.yaml
+            infrastructure/k8s/ingestion-deployment.yaml
+            infrastructure/k8s/services.yaml
+          images: |
+            ${{ env.REGISTRY }}/edp-api:${{ needs.build-and-push.outputs.image_tag }}
+            ${{ env.REGISTRY }}/edp-ingestion:${{ needs.build-and-push.outputs.image_tag }}
+
+      - name: Verify deployment
+        run: |
+          kubectl rollout status deployment/edp-api \
+            -n edp-${{ github.event.inputs.environment || 'staging' }} \
+            --timeout=300s
+
+      - name: Run smoke tests
+        run: |
+          API_URL=${{ secrets.API_URL }}
+          curl --fail "$API_URL/health" || exit 1
+          echo "✅ Health check passed"

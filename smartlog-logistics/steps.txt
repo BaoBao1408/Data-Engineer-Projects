@@ -3,7 +3,7 @@
 3. docker-compose up -d zookeeper kafka postgres kafka-ui  
 docker ps --format "table {{.Names}}\t{{.Status}}" - check docker healthy
 
-otnet ef migrations add AddUserTable
+dotnet ef migrations add AddUserTable
 >> dotnet ef database update
 
 

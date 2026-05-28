@@ -1,0 +1,317 @@
+version: "3.9"
+
+x-airflow-common: &airflow-common
+  image: apache/airflow:2.9.1
+  environment: &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres-airflow/airflow
+    AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:airflow@postgres-airflow/airflow
+    AIRFLOW__CELERY__BROKER_URL: redis://redis:6379/0
+    AIRFLOW__CORE__FERNET_KEY: ""
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "true"
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__API__AUTH_BACKENDS: airflow.api.auth.backend.basic_auth
+    _PIP_ADDITIONAL_REQUIREMENTS: >
+      azure-storage-blob azure-identity pyodbc sqlalchemy psycopg2-binary
+      neo4j pandas openpyxl pdfplumber python-docx langchain chromadb
+      openai great_expectations pydantic fastapi
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/plugins:/opt/airflow/plugins
+    - ./src:/opt/airflow/src
+    - airflow_logs:/opt/airflow/logs
+  depends_on: &airflow-common-depends-on
+    redis:
+      condition: service_healthy
+    postgres-airflow:
+      condition: service_healthy
+
+services:
+  # ─────────────────────────────────────────
+  # DATABASES
+  # ─────────────────────────────────────────
+  postgres-warehouse:
+    image: postgres:16-alpine
+    container_name: edp-postgres-warehouse
+    command: >
+      postgres
+      -c hba_file=/etc/postgresql/pg_hba.conf
+    environment:
+      POSTGRES_USER: ${WAREHOUSE_DB_USER:-edp_user}
+      POSTGRES_PASSWORD: ${WAREHOUSE_DB_PASSWORD:-edp_pass}
+      POSTGRES_DB: ${WAREHOUSE_DB_NAME:-edp_warehouse}
+    volumes:
+      - postgres_warehouse_data:/var/lib/postgresql/data
+      - ./src/warehouse/migrations:/docker-entrypoint-initdb.d
+      - ./pg_hba.conf:/etc/postgresql/pg_hba.conf
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U edp_user -d edp_warehouse"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edp-network
+
+  postgres-airflow:
+    image: postgres:16-alpine
+    container_name: edp-postgres-airflow
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres_airflow_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edp-network
+
+  neo4j:
+    image: neo4j:5.18-community
+    container_name: edp-neo4j
+    environment:
+      NEO4J_AUTH: neo4j/${NEO4J_PASSWORD:-neo4j_pass}
+      NEO4J_PLUGINS: '["apoc", "graph-data-science"]'
+      NEO4J_dbms_security_procedures_unrestricted: apoc.*,gds.*
+      NEO4J_dbms_memory_heap_initial__size: 512m
+      NEO4J_dbms_memory_heap_max__size: 2g
+    volumes:
+      - neo4j_data:/data
+      - neo4j_logs:/logs
+      - neo4j_plugins:/plugins
+    ports:
+      - "7474:7474"   # Browser
+      - "7687:7687"   # Bolt
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:7474 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - edp-network
+
+  # ─────────────────────────────────────────
+  # OBJECT STORAGE (MinIO = Azure Blob local)
+  # ─────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: edp-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minio_admin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minio_secret}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"   # API
+      - "9001:9001"   # Console
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+    networks:
+      - edp-network
+
+  # ─────────────────────────────────────────
+  # VECTOR STORE (ChromaDB for RAG)
+  # ─────────────────────────────────────────
+  chromadb:
+    image: chromadb/chroma:latest
+    container_name: edp-chromadb
+    volumes:
+      - chroma_data:/chroma/chroma
+    ports:
+      - "8001:8000"
+    networks:
+      - edp-network
+
+  # ─────────────────────────────────────────
+  # CACHE / MESSAGE BROKER
+  # ─────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: edp-redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - edp-network
+
+  # ─────────────────────────────────────────
+  # AIRFLOW (Orchestration = ADF local equiv)
+  # ─────────────────────────────────────────
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: edp-airflow-webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - edp-network
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: edp-airflow-scheduler
+    command: scheduler
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - edp-network
+
+  airflow-worker:
+    <<: *airflow-common
+    container_name: edp-airflow-worker
+    command: celery worker
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      - edp-network
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: edp-airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db init
+        airflow users create \
+          --username ${AIRFLOW_USER:-admin} \
+          --password ${AIRFLOW_PASSWORD:-admin} \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@edp.local
+    environment:
+      <<: *airflow-common-env
+    networks:
+      - edp-network
+
+  # ─────────────────────────────────────────
+  # APPLICATION SERVICES
+  # ─────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.api
+    container_name: edp-api
+    environment:
+      - ENV=development
+      - DATABASE_URL=postgresql://edp_user:edp_pass@postgres-warehouse/edp_warehouse
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_USER=neo4j
+      - NEO4J_PASSWORD=${NEO4J_PASSWORD:-neo4j_pass}
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minio_admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minio_secret}
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./src:/app/src
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres-warehouse:
+        condition: service_healthy
+      neo4j:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - edp-network
+    restart: unless-stopped
+
+  ingestion:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.ingestion
+    container_name: edp-ingestion
+    environment:
+      - ENV=development
+      - DATABASE_URL=postgresql://edp_user:edp_pass@postgres-warehouse/edp_warehouse
+      - MINIO_ENDPOINT=minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minio_admin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minio_secret}
+    volumes:
+      - ./src:/app/src
+      - ./data/raw:/app/data/raw
+    depends_on:
+      postgres-warehouse:
+        condition: service_healthy
+    networks:
+      - edp-network
+
+  # ─────────────────────────────────────────
+  # MONITORING (Prometheus + Grafana)
+  # ─────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: edp-prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - edp-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: edp-grafana
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-grafana_pass}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/dashboards:/etc/grafana/provisioning/dashboards
+      - ./monitoring/grafana/datasources:/etc/grafana/provisioning/datasources
+    ports:
+      - "3000:3000"
+    networks:
+      - edp-network
+
+volumes:
+  postgres_warehouse_data:
+  postgres_airflow_data:
+  neo4j_data:
+  neo4j_logs:
+  neo4j_plugins:
+  minio_data:
+  chroma_data:
+  redis_data:
+  airflow_logs:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  edp-network:
+    driver: bridge

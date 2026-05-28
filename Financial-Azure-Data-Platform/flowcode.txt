@@ -1,0 +1,50 @@
+create venv with uv
+uv venv .venv
+.venv\Scripts\activate
+
+Install dependencies
+uv pip install -r requirements.txt
+pip freeze > requirements.txt
+uv pip install -r requirements-etl.txt
+pip freeze > requirements-etl.txt
+uv pip install -r requirements-ingestion.txt
+pip freeze > requirements-ingestion.txt
+
+create schema 
+docker cp src/warehouse/migrations/001_financial_schema.sql edp-postgres-warehouse:/tmp/schema.sql
+docker exec edp-postgres-warehouse psql -U edp_user -d edp_warehouse -f /tmp/schema.sql
+
+check tables:
+docker exec edp-postgres-warehouse psql -U edp_user -d edp_warehouse -c "\dt financial.*"
+
+seed (add data):
+docker run --rm `
+  --network financial-azure-data-platform_edp-network `
+  -v "${PWD}:/app" -w /app `
+  -e WAREHOUSE_DB_HOST=postgres-warehouse `
+  -e WAREHOUSE_DB_PORT=5432 `
+  -e WAREHOUSE_DB_USER=edp_user `
+  -e WAREHOUSE_DB_PASSWORD=edp_pass `
+  python:3.11-slim `
+  bash -c "apt-get update -qq && apt-get install -y -q unixodbc-dev gcc && pip install -q psycopg2-binary sqlalchemy pydantic-settings loguru tenacity python-dotenv pyodbc && python scripts/seed_financial_data.py"
+
+  Get-Content src/warehouse/migrations/001_financial_schema.sql | docker exec -i edp-postgres-warehouse psql -U edp_user -d edp_warehouse
+
+  docker exec edp-postgres-warehouse psql -U edp_user -d edp_warehouse -c "\dt financial.*"
+
+upload data into raw zone azure:
+  docker run --rm `
+  --network financial-azure-data-platform_edp-network `
+  -v "${PWD}:/app" -w /app `
+  --env-file .env `
+  -e WAREHOUSE_DB_HOST=postgres-warehouse `
+  -e WAREHOUSE_DB_PORT=5432 `
+  python:3.11-slim `
+  bash -c "pip install -q pandas pyarrow sqlalchemy psycopg2-binary azure-storage-file-datalake python-dotenv && python scripts/upload_data.py"
+
+connect with neo4j:
+docker run --rm `
+  -v "${PWD}:/app" -w /app `
+  --env-file .env `
+  python:3.11-slim `
+  bash -c "pip install -q neo4j python-dotenv && python scripts/seed_neo4j.py"
