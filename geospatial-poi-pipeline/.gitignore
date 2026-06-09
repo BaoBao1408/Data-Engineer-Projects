@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.pytest_cache/
+.coverage
+coverage.xml
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Environment
+.env
+*.env
+venv/
+.venv/
+env/
+
+# Data files (raw data, not committed)
+data/
+*.parquet
+*.csv
+*.geojson
+!tests/fixtures/*.geojson
+
+# Docker
+docker-compose.override.yml
+
+# Airflow
+logs/
+airflow.cfg
+airflow.db
+webserver_config.py
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Secrets
+*.pem
+*.key
+*.crt
+secrets/

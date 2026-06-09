@@ -1,0 +1,11 @@
+# FastAPI service
+geopandas==0.14.4
+shapely==2.0.4
+pyproj==3.6.1
+psycopg2-binary==2.9.9
+requests==2.32.3
+pandas==2.2.2
+fastapi==0.111.0
+uvicorn[standard]==0.30.1
+pydantic==2.7.3
+sqlalchemy==2.0.30

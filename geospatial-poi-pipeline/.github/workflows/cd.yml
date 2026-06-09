@@ -1,0 +1,51 @@
+name: CD — Deploy to Production
+
+on:
+  push:
+    branches: [main]
+    tags:
+      - "v*.*.*"
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.PROD_HOST }}
+          username: ${{ secrets.PROD_USER }}
+          key: ${{ secrets.PROD_SSH_KEY }}
+          script: |
+            cd /opt/geospatial-poi-pipeline
+
+            # Pull latest images
+            echo "${{ secrets.GITHUB_TOKEN }}" | \
+              docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+            docker compose pull pipeline api
+
+            # Zero-downtime API restart
+            docker compose up -d --no-deps api
+            sleep 10
+
+            # Health check
+            curl --fail http://localhost:8000/health || exit 1
+
+            # Cleanup old images
+            docker image prune -f
+
+            echo "Deploy complete: $(date)"
+
+      - name: Notify on success
+        if: success()
+        run: echo "Deployed to production successfully"
+
+      - name: Notify on failure
+        if: failure()
+        run: echo "Deployment FAILED — check logs"
